@@ -1,6 +1,7 @@
+#include <ROOT/RField.hxx>
 #include <ROOT/RNTuple.hxx>
 #include <ROOT/RNTupleModel.hxx>
-#include <ROOT/RField.hxx>
+#include <ROOT/RNTupleOptions.hxx>
 
 #include <TBranch.h>
 #include <TFile.h>
@@ -13,11 +14,14 @@
 #include <memory>
 #include <vector>
 
-using RNTupleModel = ROOT::Experimental::RNTupleModel;
+using RCollectionNTupleWriter = ROOT::Experimental::RCollectionNTupleWriter;
+using REntry = ROOT::Experimental::REntry;
 using RFieldBase = ROOT::Experimental::Detail::RFieldBase;
-using RNTupleReader = ROOT::Experimental::RNTupleReader;
+using RNTupleModel = ROOT::Experimental::RNTupleModel;
+using RNTupleWriteOptions = ROOT::Experimental::RNTupleWriteOptions;
 using RNTupleWriter = ROOT::Experimental::RNTupleWriter;
 
+// Replace the dot "." by "__" in a name string
 static std::string SanitizeBranchName(std::string name)
 {
     size_t pos = 0;
@@ -29,7 +33,7 @@ static std::string SanitizeBranchName(std::string name)
     return name;
 }
 
-struct SimpleField
+struct FlatField
 {
     std::string treeName;
     std::string ntupleName;
@@ -39,31 +43,76 @@ struct SimpleField
     //    unsigned int fldSize;
 };
 
+static void Usage(char *progname)
+{
+   std::cout << "Usage: " << progname << " -i <input.root> -o <output.ntuple> "
+             << "[-t(ree name)]"
+             << std::endl;
+}
+
 int main(int argc, char **argv)
 {
-    if (argc != 3)
-    {
-        std::cout << "Error! Please specify the location of input file and output file!" << std::endl;
-        std::cout << "Example: ./<executable> input_file output_file" << std::endl;
-        return 0;
+    std::string inputFile = "input.root";
+    std::string outputFile = "output.ntuple";
+    // int compressionSettings = 0;
+    // std::string compressionShorthand = "none";
+    // std::string headers;
+    // unsigned bloatFactor = 1;
+    Bool_t treeNameFlag = false;
+    std::string treeName = "tree";
+
+    int inputArg;
+    while ((inputArg = getopt(argc, argv, "hvi:o:t:")) != -1) {
+        switch (inputArg) {
+        case 'h':
+        case 'v':
+            Usage(argv[0]);
+            return 0;
+        case 'i':
+            inputFile = optarg;
+            break;
+        case 'o':
+            outputFile = optarg;
+            break;
+        // case 'c':
+        //     compressionSettings = GetCompressionSettings(optarg);
+        //     compressionShorthand = optarg;
+        //     break;
+        // case 'H':
+        //     headers = optarg;
+        //     break;
+        // case 'b':
+        //     bloatFactor = std::stoi(optarg);
+        //     assert(bloatFactor > 0);
+        //     break;
+        // case 'm':
+        //     ROOT::EnableImplicitMT();
+        //     break;
+        case 't':
+            treeName = optarg;
+            treeNameFlag = true;
+            break;
+        default:
+            fprintf(stderr, "Unknown option: -%c\n", inputArg);
+            Usage(argv[0]);
+            return 1;
+        }
     }
 
-
-    char const *inputFile = argv[1];
-    std::unique_ptr<TFile> rootFile(TFile::Open(inputFile));
+    std::unique_ptr<TFile> rootFile(TFile::Open(inputFile.c_str()));
     assert(rootFile && !rootFile->IsZombie());
 
     //
-    // Fine the tree in the input root file.
+    // Fine the tree in the input root file automatically if not specified in input arguments
     //
     // Works only if the input root file contains only one tree.
-    std::string treeName = rootFile->GetListOfKeys()->First()->GetName();
+    if(!treeNameFlag)treeName=rootFile->GetListOfKeys()->First()->GetName();
     TTree *tree = rootFile->Get<TTree>(treeName.c_str());
 
     //
-    // Get the scheme of the tree
+    // Get the schema of the tree
     //
-    std::vector<SimpleField> simpleFields;
+    std::vector<FlatField> simpleFields;
     for (auto branch : TRangeDynCast<TBranch>(*tree->GetListOfBranches()))
     {
         assert(branch);
@@ -84,6 +133,7 @@ int main(int argc, char **argv)
         model->AddField(std::move(field));
         std::cout << "Add field: " << model->GetField(fieldIter.ntupleName)->GetName() << "[" << model->GetField(fieldIter.ntupleName)->GetType() << "]" << std::endl;
     }
+    model->Freeze();
 
     // Bind the tree branch address and the field address
     for (auto fieldIter : simpleFields) 
@@ -95,8 +145,7 @@ int main(int argc, char **argv)
     }
 
     // Create the RNTuple file
-    char const *kNTupleFileName = argv[2];
-    auto ntuple = RNTupleWriter::Recreate(std::move(model), treeName, kNTupleFileName);
+    auto ntuple = RNTupleWriter::Recreate(std::move(model), treeName, outputFile);
     
     // Loop the tree
     auto nEntries = tree->GetEntries();
