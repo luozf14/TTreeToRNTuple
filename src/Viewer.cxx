@@ -1,5 +1,6 @@
 #include <ROOT/RNTuple.hxx>
 #include <ROOT/RNTupleModel.hxx>
+#include <TFile.h>
 
 #include <iostream>
 #include <fstream>
@@ -19,7 +20,10 @@ int main(int argc, char **argv)
 
     char const *kNTupleFileName = argv[1];
 
-    auto ntuple = RNTupleReader::Open("T1", kNTupleFileName);
+    std::unique_ptr<TFile> ntupleFile(TFile::Open(kNTupleFileName));
+    std::string ntupleName = ntupleFile->GetListOfKeys()->First()->GetName();
+
+    auto ntuple = RNTupleReader::Open(ntupleName, kNTupleFileName);
     ntuple->PrintInfo();
     std::cout << "The third entry is shown below:" << std::endl;
     ntuple->Show(2, ENTupleShowFormat::kCompleteJSON);
