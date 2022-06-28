@@ -1,23 +1,29 @@
+#include <ROOT/RField.hxx>
 #include <ROOT/RNTuple.hxx>
 #include <ROOT/RNTupleModel.hxx>
-#include <ROOT/RField.hxx>
+#include <ROOT/RNTupleOptions.hxx>
 
 #include <TBranch.h>
 #include <TFile.h>
 #include <TLeaf.h>
 #include <TROOT.h>
 #include <TTree.h>
+#include <TBranchElement.h>
+
 
 #include <iostream>
 #include <fstream>
 #include <memory>
 #include <vector>
 
-using RNTupleModel = ROOT::Experimental::RNTupleModel;
+using RCollectionNTupleWriter = ROOT::Experimental::RCollectionNTupleWriter;
+using REntry = ROOT::Experimental::REntry;
 using RFieldBase = ROOT::Experimental::Detail::RFieldBase;
-using RNTupleReader = ROOT::Experimental::RNTupleReader;
+using RNTupleModel = ROOT::Experimental::RNTupleModel;
+using RNTupleWriteOptions = ROOT::Experimental::RNTupleWriteOptions;
 using RNTupleWriter = ROOT::Experimental::RNTupleWriter;
 
+// Replace the dot "." by "__" in a name string
 static std::string SanitizeBranchName(std::string name)
 {
     size_t pos = 0;
@@ -29,94 +35,150 @@ static std::string SanitizeBranchName(std::string name)
     return name;
 }
 
-struct SimpleField
+struct FlatField
 {
     std::string treeName;
     std::string ntupleName;
     std::string typeName;
-    //    std::unique_ptr<unsigned char []> treeBuffer; // todo (now used for collection fields)
-    //    std::unique_ptr<unsigned char []> ntupleBuffer; // todo (now used for collection fields)
-    //    unsigned int fldSize;
+    std::map<std::string, void *>fieldAddress;
+    // std::unique_ptr<unsigned char[]> treeBuffer;   // todo (now used for collection fields)
+    // std::unique_ptr<unsigned char[]> ntupleBuffer; // todo (now used for collection fields)
+    // unsigned int fldSize;
 };
+
+static void Usage(char *progname)
+{
+    std::cout << "Usage: " << progname << " -i <input.root> -o <output.ntuple> "
+              << "[-t(ree name)]"
+              << std::endl;
+}
 
 int main(int argc, char **argv)
 {
-    // if (argc != 3)
-    // {
-    //     std::cout << "Error! Please specify the location of input file and output file!" << std::endl;
-    //     std::cout << "Example: ./<executable> input_file output_file" << std::endl;
-    //     return 0;
-    // }
+    std::string inputFile = "input.root";
+    std::string outputFile = "output.ntuple";
+    // int compressionSettings = 0;
+    // std::string compressionShorthand = "none";
+    // std::string headers;
+    // unsigned bloatFactor = 1;
+    Bool_t treeNameFlag = false;
+    std::string treeName = "tree";
 
+    int inputArg;
+    while ((inputArg = getopt(argc, argv, "hvi:o:t:")) != -1)
+    {
+        switch (inputArg)
+        {
+        case 'h':
+        case 'v':
+            Usage(argv[0]);
+            return 0;
+        case 'i':
+            inputFile = optarg;
+            break;
+        case 'o':
+            outputFile = optarg;
+            break;
+        // case 'c':
+        //     compressionSettings = GetCompressionSettings(optarg);
+        //     compressionShorthand = optarg;
+        //     break;
+        // case 'H':
+        //     headers = optarg;
+        //     break;
+        // case 'b':
+        //     bloatFactor = std::stoi(optarg);
+        //     assert(bloatFactor > 0);
+        //     break;
+        // case 'm':
+        //     ROOT::EnableImplicitMT();
+        //     break;
+        case 't':
+            treeName = optarg;
+            treeNameFlag = true;
+            break;
+        default:
+            fprintf(stderr, "Unknown option: -%c\n", inputArg);
+            Usage(argv[0]);
+            return 1;
+        }
+    }
 
-    char const *inputFile = argv[1];
-    std::unique_ptr<TFile> rootFile(TFile::Open(inputFile));
-    assert(rootFile && !rootFile->IsZombie());
+    std::unique_ptr<TFile> f(TFile::Open(inputFile.c_str()));
+    assert(f && !f->IsZombie());
 
     //
-    // Fine the tree in the input root file.
-    //
+    // Fine the tree in the input root file automatically if not specified in input arguments
     // Works only if the input root file contains only one tree.
-    std::string treeName = rootFile->GetListOfKeys()->First()->GetName();
-    TTree *tree = rootFile->Get<TTree>(treeName.c_str());
+    //
+    if (!treeNameFlag)
+        treeName = f->GetListOfKeys()->First()->GetName();
+    auto tree = f->Get<TTree>(treeName.c_str());
 
     //
     // Get the scheme of the tree
     //
-    std::vector<SimpleField> simpleFields;
+    std::vector<FlatField> flatFields;
     for (auto branch : TRangeDynCast<TBranch>(*tree->GetListOfBranches()))
     {
         assert(branch);
         assert(branch->GetNleaves() == 1);
-        TLeaf *leaf = static_cast<TLeaf *>(branch->GetListOfLeaves()->First());
-        std::cout << "Detect branch: " << leaf->GetName() << "[" << leaf->GetTypeName() << "]" << std::endl;
-        // simpleFields.push_back({leaf->GetName(), SanitizeBranchName(leaf->GetName()), leaf->GetTypeName()});
 
-        auto field = RFieldBase::Create(leaf->GetName(), leaf->GetTypeName()).Unwrap();
+        TLeaf *leaf = static_cast<TLeaf *>(branch->GetListOfLeaves()->First());
+        std::cout << "leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: "<<leaf->GetTitle() << std::endl;
         //  If this leaf stores a variable-sized array or a multi-dimensional array whose last dimension has variable size,
         //  return a pointer to the TLeaf that stores such size. Return a nullptr otherwise.
         auto szLeaf = leaf->GetLeafCount();
         if (szLeaf)
         {
-            std::cout<<szLeaf->GetName()<<std::endl;
-            std::cout<<szLeaf->GetMaximum()<<std::endl;
-
+            std::cout << szLeaf->GetName() << std::endl;
+            std::cout << szLeaf->GetMaximum() << std::endl;
+        }
+        else
+        {
+            flatFields.push_back({leaf->GetName(), SanitizeBranchName(leaf->GetName()), leaf->GetTypeName()});
         }
     }
 
-/*
-    //
-    // Define the RNTuple
-    //
-    // Create the RNTuple model
-    auto model = RNTupleModel::Create();
-    for (auto fieldIter : simpleFields)
+    auto model = RNTupleModel::CreateBare();
+    for (auto &f1 : flatFields)
     {
-        auto field = RFieldBase::Create(fieldIter.ntupleName, fieldIter.typeName).Unwrap();
+        auto field = RFieldBase::Create(f1.ntupleName, f1.typeName).Unwrap();
         model->AddField(std::move(field));
-        std::cout << "Add field: " << model->GetField(fieldIter.ntupleName)->GetName() << "[" << model->GetField(fieldIter.ntupleName)->GetType() << "]" << std::endl;
+        std::cout << "Add field: " << model->GetField(f1.ntupleName)->GetName() << "; field type name: " << model->GetField(f1.ntupleName)->GetType() << std::endl;
+        if(f1.typeName=="float")
+        {
+            float **a = new float *;
+            tree->SetBranchAddress(f1.ntupleName.c_str(), a);
+            f1.fieldAddress[f1.ntupleName]=a;
+        }
+        else if(f1.typeName=="double")
+        {
+            double **a = new double *;
+            tree->SetBranchAddress(f1.ntupleName.c_str(), a);
+            f1.fieldAddress[f1.ntupleName]=a;
+        }
     }
+    model->Freeze();
 
     // Bind the tree branch address and the field address
-    for (auto fieldIter : simpleFields) 
+    auto entry = model->CreateBareEntry();
+    for (auto &f1 : flatFields)
     {
-      // We connect the model's default entry's memory location for the new field to the branch, so that we can
-      // fill the ntuple with the data read from the TTree
-      void *fieldDataPtr = model->GetDefaultEntry()->GetValue(fieldIter.ntupleName).GetRawPtr();
-      tree->SetBranchAddress(fieldIter.treeName.c_str(), fieldDataPtr);
+        entry->CaptureValueUnsafe(f1.ntupleName,f1.fieldAddress[f1.ntupleName]);
     }
 
     // Create the RNTuple file
-    char const *kNTupleFileName = argv[2];
-    auto ntuple = RNTupleWriter::Recreate(std::move(model), treeName, kNTupleFileName);
-    
+    auto ntuple = RNTupleWriter::Recreate(std::move(model), treeName, outputFile);
+
     // Loop the tree
     auto nEntries = tree->GetEntries();
-    for (decltype(nEntries) i = 0; i < nEntries; i++) 
+    for (decltype(nEntries) i = 0; i < nEntries; ++i)
     {
         tree->GetEntry(i);
-        ntuple->Fill();
+        ntuple->Fill(*entry);
     }
-*/
+    tree->ResetBranchAddresses();
+
     return 0;
 }
