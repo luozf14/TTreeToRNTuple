@@ -4,6 +4,8 @@
 #include <ROOT/RNTupleOptions.hxx>
 
 #include <TBranch.h>
+#include <TBranchElement.h>
+
 #include <TFile.h>
 #include <TLeaf.h>
 #include <TROOT.h>
