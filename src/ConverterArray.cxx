@@ -10,7 +10,6 @@
 #include <TTree.h>
 #include <TBranchElement.h>
 
-
 #include <iostream>
 #include <fstream>
 #include <memory>
@@ -40,9 +39,10 @@ struct FlatField
     std::string treeName;
     std::string ntupleName;
     std::string typeName;
-    std::map<std::string, void *>fieldAddress;
-    // std::unique_ptr<unsigned char[]> treeBuffer;   // todo (now used for collection fields)
-    // std::unique_ptr<unsigned char[]> ntupleBuffer; // todo (now used for collection fields)
+    Int_t arrayLength;
+    std::map<std::string, void *> fieldAddress;
+    void* treeBuffer;   // todo (now used for collection fields)
+    void* ntupleBuffer; // todo (now used for collection fields)
     // unsigned int fldSize;
 };
 
@@ -125,7 +125,8 @@ int main(int argc, char **argv)
         assert(branch->GetNleaves() == 1);
 
         TLeaf *leaf = static_cast<TLeaf *>(branch->GetListOfLeaves()->First());
-        std::cout << "leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: "<<leaf->GetTitle() << std::endl;
+        std::cout << "leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: " << leaf->GetTitle()
+                  << " ; leaf length: " << leaf->GetLenStatic() << std::endl;
         //  If this leaf stores a variable-sized array or a multi-dimensional array whose last dimension has variable size,
         //  return a pointer to the TLeaf that stores such size. Return a nullptr otherwise.
         auto szLeaf = leaf->GetLeafCount();
@@ -136,36 +137,35 @@ int main(int argc, char **argv)
         }
         else
         {
-            flatFields.push_back({leaf->GetName(), SanitizeBranchName(leaf->GetName()), leaf->GetTypeName()});
+            flatFields.push_back({leaf->GetName(), SanitizeBranchName(leaf->GetName()), leaf->GetTypeName(), leaf->GetLenStatic()});
         }
     }
 
-    auto model = RNTupleModel::CreateBare();
+    auto model = RNTupleModel::Create();
     for (auto &f1 : flatFields)
     {
-        auto field = RFieldBase::Create(f1.ntupleName, f1.typeName).Unwrap();
-        model->AddField(std::move(field));
+        std::cout<<"f1.arrayLength: "<<f1.arrayLength<<std::endl;
+        if (f1.typeName == "Float_t" && f1.arrayLength>1)
+        {
+            f1.treeBuffer = new float [f1.arrayLength];
+            tree->SetBranchAddress(f1.ntupleName.c_str(), f1.treeBuffer);
+            auto field = RFieldBase::Create(f1.ntupleName, "std::vector<float>").Unwrap();
+            model->AddField(std::move(field));
+        }
+        else if (f1.typeName == "Double_t" && f1.arrayLength>1)
+        {
+            f1.treeBuffer = new double [f1.arrayLength];
+            tree->SetBranchAddress(f1.ntupleName.c_str(), f1.treeBuffer);
+            auto field = RFieldBase::Create(f1.ntupleName, "std::vector<double>").Unwrap();
+            model->AddField(std::move(field));
+        }
         std::cout << "Add field: " << model->GetField(f1.ntupleName)->GetName() << "; field type name: " << model->GetField(f1.ntupleName)->GetType() << std::endl;
-        if(f1.typeName=="float")
-        {
-            float **a = new float *;
-            tree->SetBranchAddress(f1.ntupleName.c_str(), a);
-            f1.fieldAddress[f1.ntupleName]=a;
-        }
-        else if(f1.typeName=="double")
-        {
-            double **a = new double *;
-            tree->SetBranchAddress(f1.ntupleName.c_str(), a);
-            f1.fieldAddress[f1.ntupleName]=a;
-        }
     }
     model->Freeze();
 
-    // Bind the tree branch address and the field address
-    auto entry = model->CreateBareEntry();
-    for (auto &f1 : flatFields)
+    for(auto &f1 : flatFields)
     {
-        entry->CaptureValueUnsafe(f1.ntupleName,f1.fieldAddress[f1.ntupleName]);
+        f1.ntupleBuffer = model->GetDefaultEntry()->GetValue(f1.ntupleName).GetRawPtr();
     }
 
     // Create the RNTuple file
@@ -176,9 +176,25 @@ int main(int argc, char **argv)
     for (decltype(nEntries) i = 0; i < nEntries; ++i)
     {
         tree->GetEntry(i);
-        ntuple->Fill(*entry);
+        for(auto &f1 : flatFields)
+        {
+            if(f1.arrayLength>1)
+            {
+                for(int j=0; j<f1.arrayLength;j++)
+                {
+                    if(f1.typeName == "Float_t")
+                    {
+                        ((std::vector<float, std::allocator<float> >*)f1.ntupleBuffer)->push_back(((float *)f1.treeBuffer)[j]);
+                    }
+                    else if (f1.typeName == "Double_t")
+                    {
+                        ((std::vector<double, std::allocator<double> >*)f1.ntupleBuffer)->push_back(((double *)f1.treeBuffer)[j]);
+                    }
+                }
+            }
+        }
+        ntuple->Fill();
     }
-    tree->ResetBranchAddresses();
 
     return 0;
 }
