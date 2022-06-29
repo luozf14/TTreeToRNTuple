@@ -130,7 +130,7 @@ int main(int argc, char **argv)
         //  If this leaf stores a variable-sized array or a multi-dimensional array whose last dimension has variable size,
         //  return a pointer to the TLeaf that stores such size. Return a nullptr otherwise.
         auto szLeaf = leaf->GetLeafCount();
-        if (szLeaf)
+        if (szLeaf) // only work when there is variable-size array. will copy Jacob's code.
         {
             std::cout << szLeaf->GetName() << std::endl;
             std::cout << szLeaf->GetMaximum() << std::endl;
