@@ -40,10 +40,9 @@ struct FlatField
     std::string ntupleName;
     std::string typeName;
     Int_t arrayLength;
-    std::map<std::string, void *> fieldAddress;
-    void* treeBuffer;   // todo (now used for collection fields)
-    void* ntupleBuffer; // todo (now used for collection fields)
-    // unsigned int fldSize;
+    std::unique_ptr<unsigned char []> treeBuffer;  
+    void* ntupleBuffer; 
+    unsigned int fieldSize;
 };
 
 static void Usage(char *progname)
@@ -145,24 +144,20 @@ int main(int argc, char **argv)
     for (auto &f1 : flatFields)
     {
         std::cout<<"f1.arrayLength: "<<f1.arrayLength<<std::endl;
-        if (f1.typeName == "Float_t" && f1.arrayLength>1)
+        if(f1.arrayLength>1)
         {
-            f1.treeBuffer = new float [f1.arrayLength];
-            tree->SetBranchAddress(f1.ntupleName.c_str(), f1.treeBuffer);
-            auto field = RFieldBase::Create(f1.ntupleName, "std::vector<float>").Unwrap();
+            auto field = RFieldBase::Create(f1.ntupleName, "std::vector<"+f1.typeName+">").Unwrap();
+            assert(field);
             model->AddField(std::move(field));
+            std::cout << "Add field: " << model->GetField(f1.ntupleName)->GetName() << "; field type name: " << model->GetField(f1.ntupleName)->GetType() << std::endl;
+            f1.fieldSize = sizeof(float);
+            f1.treeBuffer = std::make_unique<unsigned char []>(f1.arrayLength*f1.fieldSize);
+            tree->SetBranchAddress(f1.ntupleName.c_str(), (void *)f1.treeBuffer.get());
         }
-        else if (f1.typeName == "Double_t" && f1.arrayLength>1)
-        {
-            f1.treeBuffer = new double [f1.arrayLength];
-            tree->SetBranchAddress(f1.ntupleName.c_str(), f1.treeBuffer);
-            auto field = RFieldBase::Create(f1.ntupleName, "std::vector<double>").Unwrap();
-            model->AddField(std::move(field));
-        }
-        std::cout << "Add field: " << model->GetField(f1.ntupleName)->GetName() << "; field type name: " << model->GetField(f1.ntupleName)->GetType() << std::endl;
+
+        
     }
     model->Freeze();
-
     for(auto &f1 : flatFields)
     {
         f1.ntupleBuffer = model->GetDefaultEntry()->GetValue(f1.ntupleName).GetRawPtr();
@@ -180,17 +175,9 @@ int main(int argc, char **argv)
         {
             if(f1.arrayLength>1)
             {
-                for(int j=0; j<f1.arrayLength;j++)
-                {
-                    if(f1.typeName == "Float_t")
-                    {
-                        ((std::vector<float, std::allocator<float> >*)f1.ntupleBuffer)->push_back(((float *)f1.treeBuffer)[j]);
-                    }
-                    else if (f1.typeName == "Double_t")
-                    {
-                        ((std::vector<double, std::allocator<double> >*)f1.ntupleBuffer)->push_back(((double *)f1.treeBuffer)[j]);
-                    }
-                }
+                ((std::vector<char>*)f1.ntupleBuffer)->resize(f1.arrayLength*f1.fieldSize);
+                auto ptrToData = ((std::vector<char>*)f1.ntupleBuffer)->data();
+                std::memcpy(ptrToData, f1.treeBuffer.get(), f1.arrayLength*f1.fieldSize);
             }
         }
         ntuple->Fill();
