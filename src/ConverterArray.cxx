@@ -40,9 +40,9 @@ struct FlatField
     std::string ntupleName;
     std::string typeName;
     Int_t arrayLength;
+    Int_t leafTypeSize;
     std::unique_ptr<unsigned char []> treeBuffer;  
-    void* ntupleBuffer; 
-    unsigned int fieldSize;
+    std::unique_ptr<unsigned char []> ntupleBuffer;  
 };
 
 static void Usage(char *progname)
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 
         TLeaf *leaf = static_cast<TLeaf *>(branch->GetListOfLeaves()->First());
         std::cout << "leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: " << leaf->GetTitle()
-                  << " ; leaf length: " << leaf->GetLenStatic() << std::endl;
+                  << "; leaf length: " << leaf->GetLenStatic() << "; leaf type size: " << leaf->GetLenType() << std::endl;
         //  If this leaf stores a variable-sized array or a multi-dimensional array whose last dimension has variable size,
         //  return a pointer to the TLeaf that stores such size. Return a nullptr otherwise.
         auto szLeaf = leaf->GetLeafCount();
@@ -136,31 +136,32 @@ int main(int argc, char **argv)
         }
         else
         {
-            flatFields.push_back({leaf->GetName(), SanitizeBranchName(leaf->GetName()), leaf->GetTypeName(), leaf->GetLenStatic()});
+            flatFields.push_back({leaf->GetName(), SanitizeBranchName(leaf->GetName()), leaf->GetTypeName(), leaf->GetLenStatic(), leaf->GetLenType()});
         }
     }
 
-    auto model = RNTupleModel::Create();
+    auto model = RNTupleModel::CreateBare();
     for (auto &f1 : flatFields)
     {
         std::cout<<"f1.arrayLength: "<<f1.arrayLength<<std::endl;
         if(f1.arrayLength>1)
         {
-            auto field = RFieldBase::Create(f1.ntupleName, "std::vector<"+f1.typeName+">").Unwrap();
+            auto field = RFieldBase::Create(f1.ntupleName, "std::array<"+f1.typeName+", "+std::to_string(f1.arrayLength)+">").Unwrap();
             assert(field);
             model->AddField(std::move(field));
             std::cout << "Add field: " << model->GetField(f1.ntupleName)->GetName() << "; field type name: " << model->GetField(f1.ntupleName)->GetType() << std::endl;
-            f1.fieldSize = sizeof(float);
-            f1.treeBuffer = std::make_unique<unsigned char []>(f1.arrayLength*f1.fieldSize);
+            f1.treeBuffer = std::make_unique<unsigned char []>(f1.arrayLength*f1.leafTypeSize);
             tree->SetBranchAddress(f1.ntupleName.c_str(), (void *)f1.treeBuffer.get());
         }
 
         
     }
     model->Freeze();
+    auto entry = model->CreateBareEntry();
     for(auto &f1 : flatFields)
     {
-        f1.ntupleBuffer = model->GetDefaultEntry()->GetValue(f1.ntupleName).GetRawPtr();
+        f1.ntupleBuffer = std::make_unique<unsigned char []>(f1.arrayLength*f1.leafTypeSize);
+        entry->CaptureValueUnsafe(f1.ntupleName, f1.ntupleBuffer.get());
     }
 
     // Create the RNTuple file
@@ -175,12 +176,10 @@ int main(int argc, char **argv)
         {
             if(f1.arrayLength>1)
             {
-                ((std::vector<char>*)f1.ntupleBuffer)->resize(f1.arrayLength*f1.fieldSize);
-                auto ptrToData = ((std::vector<char>*)f1.ntupleBuffer)->data();
-                std::memcpy(ptrToData, f1.treeBuffer.get(), f1.arrayLength*f1.fieldSize);
+                std::memcpy(f1.ntupleBuffer.get(), f1.treeBuffer.get(), f1.arrayLength*f1.leafTypeSize);
             }
         }
-        ntuple->Fill();
+        ntuple->Fill(*entry);
     }
 
     return 0;
