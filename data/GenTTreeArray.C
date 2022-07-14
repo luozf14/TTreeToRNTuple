@@ -7,11 +7,13 @@ void GenTTreeArray()
     Double_t y[5];
     Int_t nZ;
     Double_t z[10];
+    std::array<float, 10> array_float;
 
     tree->Branch("x", x, "x[3]/F");
     tree->Branch("y", y, "y[5]/D");
     tree->Branch("nZ", &nZ, "nZ/I");
     tree->Branch("z", z, "z[nZ]/D");
+    tree->Branch("array_float",&array_float);
 
     TRandom3 ranGen;
     for(int i=0; i<10; i++)
@@ -26,6 +28,8 @@ void GenTTreeArray()
         {
             z[k]=ranGen.Rndm();
         }
+        for(int k=0;k<10;k++) array_float[k]=(ranGen.Rndm()*100);
+
         tree->Fill();
     }
 
