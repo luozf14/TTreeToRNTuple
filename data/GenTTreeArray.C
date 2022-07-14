@@ -8,13 +8,13 @@ void GenTTreeArray()
     Int_t nZ;
     Double_t z[10];
 
-    tree->Branch("nZ", &nZ, "nZ/I");
     tree->Branch("x", x, "x[3]/F");
     tree->Branch("y", y, "y[5]/D");
+    tree->Branch("nZ", &nZ, "nZ/I");
     tree->Branch("z", z, "z[nZ]/D");
 
     TRandom3 ranGen;
-    for(int i=0; i<1000; i++)
+    for(int i=0; i<10; i++)
     {
         for(int j=0;j<5;j++)
         {
