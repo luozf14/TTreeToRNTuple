@@ -14,7 +14,18 @@ void GenRNTupleArray()
 {
     auto model = RNTupleModel::Create();
 
-    auto fldAx = model->MakeField<float*>("Array_x");
+    auto fldAx = model->MakeField<std::vector<float>>("Array_x");
+    auto ntuple = RNTupleWriter::Recreate(std::move(model), "F", "out.tuple");
+    for(int i=0;i<100;i++)
+    {
+        fldAx->clear();
+        for(int j=0;j<10;j++)
+        {
+            fldAx->push_back(j*100.);
+        }
+    ntuple->Fill();
+
+    }
 
     
 }
