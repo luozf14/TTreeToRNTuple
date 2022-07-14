@@ -137,7 +137,6 @@ int main(int argc, char **argv)
       auto field = RFieldBase::Create(l->GetName(), l->GetTypeName()).Unwrap();
       auto szLeaf = l->GetLeafCount();
       if (szLeaf) {
-         std::cout<<"goes here"<<std::endl;
          auto iter = find_if(std::begin(leafCountCollections), std::end(leafCountCollections),
             [szLeaf](const std::unique_ptr<LeafCountCollection> &c){return c->treeName == szLeaf->GetName();});
          if (iter == leafCountCollections.end()) {
@@ -198,7 +197,7 @@ int main(int argc, char **argv)
       tree->SetBranchAddress(f.treeName.c_str(), fieldDataPtr);
    }
 
-   RNTupleWriteOptions options;
+   // RNTupleWriteOptions options;
    // options.SetCompression(compressionSettings);
    auto ntuple = RNTupleWriter::Recreate(std::move(model), treeName, outputFile);
 
