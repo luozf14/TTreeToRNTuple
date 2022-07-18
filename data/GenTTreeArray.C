@@ -1,7 +1,7 @@
 void GenTTreeArray()
 {
-    TFile *file = new TFile("TTreeArray.root", "RECREATE");
-    TTree *tree = new TTree("T2", "TTree with c++ arrays");
+    auto file = std::make_shared<TFile>("TTreeArray.root", "RECREATE");
+   auto tree = std::make_shared<TTree>("T2", "TTree with c++ arrays");
 
     Float_t x[3];
     Double_t y[5];
