@@ -1,7 +1,7 @@
 void GenTTreeSimple()
 {
-    TFile *file = new TFile("TTreeSimple.root", "RECREATE");
-    TTree *tree = new TTree("T1", "TTree with simple variable");
+    auto file = std::make_shared<TFile>("TTreeSimple.root", "RECREATE");
+    auto tree = std::make_shared<TTree>("T1", "TTree with simple variable");
 
     Float_t x,y,z;
     Double_t d;
