@@ -149,8 +149,7 @@ int main(int argc, char **argv)
         auto field = RFieldBase::Create(c1.ntupleName, c1.typeName).Unwrap();
         assert(field);
         model->AddField(std::move(field));
-        std::cout << "Add field: " << model->GetField(c1.ntupleName)->GetName() << "; field type name: " << model->GetField(c1.ntupleName)->GetType() << "; field child field type size: "
-                  << model->GetField(c1.ntupleName)->GetSubFields()[0]->GetValueSize() << std::endl;
+        std::cout << "Add field: " << model->GetField(c1.ntupleName)->GetName() << "; field type name: " << model->GetField(c1.ntupleName)->GetType() << std::endl;
         auto kClass = TClass::GetClass(c1.typeName.c_str());
         c1.treeBuffer = std::make_shared<void *>(nullptr);
         tree->SetBranchAddress(c1.treeName.c_str(), c1.treeBuffer.get(), kClass, EDataType::kOther_t, true);
