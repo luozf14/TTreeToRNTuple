@@ -29,6 +29,6 @@ int main(int argc, char **argv)
     auto ntuple = RNTupleReader::Open(ntupleName, kNTupleFileName);
     ntuple->PrintInfo();
     std::cout << "The third entry is shown below:" << std::endl;
-    ntuple->Show(19, ENTupleShowFormat::kCompleteJSON);
+    ntuple->Show(13, ENTupleShowFormat::kCompleteJSON);
     return 0;
 }
