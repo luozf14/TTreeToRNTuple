@@ -13,3 +13,8 @@ void SimpleClass::SetVecDouble(std::vector<double> d)
 {
     fVecDouble = d;
 }
+
+void SimpleClass::SetVecVecFloat(std::vector<std::vector<float> > ff)
+{
+    fVecVecFloat = ff;
+}
