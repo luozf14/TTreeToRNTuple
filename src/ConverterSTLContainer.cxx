@@ -135,7 +135,10 @@ int main(int argc, char **argv)
     {
         assert(branch);
         assert(branch->GetNleaves() == 1);
-
+        if (typeid(*branch) == typeid(TBranchSTL) || typeid(*branch) == typeid(TBranchElement))
+        {
+            std::cout<<"is STL container"<<std::endl;
+        }
         TLeaf *leaf = static_cast<TLeaf *>(branch->GetListOfLeaves()->First());
         std::cout << "leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: " << leaf->GetTitle()
                   << "; leaf length: " << leaf->GetLenStatic() << "; leaf type size: " << leaf->GetLenType() << std::endl;
