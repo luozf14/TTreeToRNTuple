@@ -3,6 +3,7 @@
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTupleOptions.hxx>
 
+#include <Compression.h>
 #include <TBranch.h>
 #include <TFile.h>
 #include <TLeaf.h>
@@ -31,28 +32,30 @@ using RFieldBase = ROOT::Experimental::Detail::RFieldBase;
 using RNTupleModel = ROOT::Experimental::RNTupleModel;
 using RNTupleWriteOptions = ROOT::Experimental::RNTupleWriteOptions;
 using RNTupleWriter = ROOT::Experimental::RNTupleWriter;
+using RCompressionSetting = ROOT::RCompressionSetting;
 
 TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName)
 {
     fInputFile = input;
     fOutputFile = output;
     fTreeName = treeName;
+    SetCompressionAlgo("none");
 }
 
-TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo)
+TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel)
 {
     fInputFile = input;
     fOutputFile = output;
     fTreeName = treeName;
-    SetCompressionAlgo(compressionAlgo);
+    SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
 }
 
-TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, std::vector<std::string> dictionary)
+TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel, std::vector<std::string> dictionary)
 {
     fInputFile = input;
     fOutputFile = output;
     fTreeName = treeName;
-    SetCompressionAlgo(compressionAlgo);
+    SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     SetDictionary(dictionary);
 }
 
@@ -95,12 +98,40 @@ void TTreeToRNTuple::SetCompressionAlgo(std::string compressionAlgo)
     }
 }
 
+void TTreeToRNTuple::SetCompressionAlgoLevel(std::string compressionAlgo, int compressionLevel)
+{
+    if (compressionAlgo == "zlib")
+    {
+        fWriteOptions.SetCompression(RCompressionSetting::EAlgorithm::EValues::kZLIB, compressionLevel);
+    }
+    else if (compressionAlgo == "lz4")
+    {
+        fWriteOptions.SetCompression(RCompressionSetting::EAlgorithm::EValues::kLZ4, compressionLevel);
+    }
+    else if (compressionAlgo == "lzma")
+    {
+        fWriteOptions.SetCompression(RCompressionSetting::EAlgorithm::EValues::kLZMA, compressionLevel);
+    }
+    else if (compressionAlgo == "zstd")
+    {
+        fWriteOptions.SetCompression(RCompressionSetting::EAlgorithm::EValues::kZSTD, compressionLevel);
+    }
+    else if (compressionAlgo == "none")
+    {
+        fWriteOptions.SetCompression(RCompressionSetting::EAlgorithm::EValues::kUseGlobal, compressionLevel);
+    }
+    else
+    {
+        abort();
+    }
+}
+
 void TTreeToRNTuple::SetDictionary(std::vector<std::string> dictionary)
 {
     for (auto d : dictionary)
     {
         int loadStatus = gSystem->Load(d.c_str());
-        if(loadStatus==0||loadStatus==1)
+        if (loadStatus == 0 || loadStatus == 1)
         {
             printf("Load dictionary \"%s\" successfully!\n", d.c_str());
         }
@@ -112,10 +143,11 @@ void TTreeToRNTuple::SetDictionary(std::vector<std::string> dictionary)
     }
 }
 
-void TTreeToRNTuple::EnableMultiThread(bool mtFlag)
-{
-    if(mtFlag) ROOT::EnableImplicitMT();
-}
+// void TTreeToRNTuple::EnableMultiThread(bool mtFlag)
+// {
+//     if (mtFlag)
+//         ROOT::EnableImplicitMT();
+// }
 
 void TTreeToRNTuple::SetTreeName(std::string treeName)
 {
@@ -138,7 +170,7 @@ void TTreeToRNTuple::Convert()
     assert(file && !file->IsZombie());
 
     auto tree = file->Get<TTree>(fTreeName.c_str());
-    if(!tree) 
+    if (!tree)
     {
         printf("Error: Tree \"%s\" is not found!\n", fTreeName.c_str());
         exit(0);
@@ -230,16 +262,19 @@ void TTreeToRNTuple::Convert()
         {
             f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
             entry->CaptureValueUnsafe(f1.ntupleName, f1.ntupleBuffer.get());
+            std::cout << "f1.isVariableSizedArray" << std::endl;
         }
         else if (!f1.isVariableSizedArray && f1.arrayLength >= 1)
         {
             f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
             entry->CaptureValueUnsafe(f1.ntupleName, f1.ntupleBuffer.get());
+            std::cout << "!f1.isVariableSizedArray && f1.arrayLength >= 1" << std::endl;
         }
     }
     for (auto &c1 : fContainerFields)
     {
         entry->CaptureValueUnsafe(c1.ntupleName, *c1.treeBuffer.get());
+        std::cout << "container" << std::endl;
     }
 
     // Create the RNTuple file
@@ -265,20 +300,19 @@ void TTreeToRNTuple::Convert()
         }
 
         ntuple->Fill(*entry);
-
-        if(i<nEntries-1)
-        {
-            printf("\rConverting[%.2lf%%]:", i*100.0/(nEntries-1));
-            int showNum = i*20/nEntries;
-            for(int j=1;j<=showNum;j++)
-            {
-                printf("▇");
-            }
-        }
-        else
-        {
-            printf("\rConversion completed[%.2lf%%]\n", i*100.0/(nEntries-1));
-        }
-        
+        printf("Entry: %ld\n", i);
+        // if(i<nEntries-1)
+        // {
+        //     printf("\rConverting[%.2lf%%]:", i*100.0/(nEntries-1));
+        //     int showNum = i*20/nEntries;
+        //     for(int j=1;j<=showNum;j++)
+        //     {
+        //         printf("▇");
+        //     }
+        // }
+        // else
+        // {
+        //     printf("\rConversion completed[%.2lf%%]\n", i*100.0/(nEntries-1));
+        // }
     }
 }

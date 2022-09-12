@@ -6,6 +6,7 @@
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTupleOptions.hxx>
 
+#include <Compression.h>
 #include <TBranch.h>
 #include <TFile.h>
 #include <TLeaf.h>
@@ -32,6 +33,7 @@ using RFieldBase = ROOT::Experimental::Detail::RFieldBase;
 using RNTupleModel = ROOT::Experimental::RNTupleModel;
 using RNTupleWriteOptions = ROOT::Experimental::RNTupleWriteOptions;
 using RNTupleWriter = ROOT::Experimental::RNTupleWriter;
+using RCompressionSetting = ROOT::RCompressionSetting;
 
 struct FlatField
 {
@@ -59,25 +61,24 @@ class TTreeToRNTuple
 public:
     // TTreeToRNTuple(){};
     TTreeToRNTuple(std::string input, std::string output, std::string treeName);
-    TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo);
-    TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, std::vector<std::string> dictionary);
+    TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel);
+    TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel, std::vector<std::string> dictionary);
     void SetInputFile(std::string input);
     void SetOutputFile(std::string output);
     void SetTreeName(std::string treeName);
     void SetCompressionAlgo(std::string compressionAlgo);
+    void SetCompressionAlgoLevel(std::string compressionAlgo, int compressionLevel);
     void SetDictionary(std::vector<std::string> dictionary);
-    void EnableMultiThread(bool mtFlag);
+    // void EnableMultiThread(bool mtFlag);
     void Convert();
 
 private:
     RNTupleWriteOptions fWriteOptions;
     std::string fInputFile;
     std::string fOutputFile;
-    // std::string fDictionary;
     std::string fTreeName;
     std::vector<FlatField> fFlatFields;
     std::vector<ContainerField> fContainerFields;
-
     std::string SanitizeBranchName(std::string name);
 };
 #endif // TTREETORNTUPLE_H
