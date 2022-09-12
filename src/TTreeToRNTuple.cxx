@@ -99,13 +99,22 @@ void TTreeToRNTuple::SetDictionary(std::vector<std::string> dictionary)
 {
     for (auto d : dictionary)
     {
-        gSystem->Load(d.c_str());
+        int loadStatus = gSystem->Load(d.c_str());
+        if(loadStatus==0||loadStatus==1)
+        {
+            printf("Load dictionary \"%s\" successfully!\n", d.c_str());
+        }
+        else
+        {
+            printf("Error: Load dictionary \"%s\" unsuccessfully! Load status: %d\n", d.c_str(), loadStatus);
+            exit(0);
+        }
     }
 }
 
-void TTreeToRNTuple::EnableMultiThread()
+void TTreeToRNTuple::EnableMultiThread(bool mtFlag)
 {
-    ROOT::EnableImplicitMT();
+    if(mtFlag) ROOT::EnableImplicitMT();
 }
 
 void TTreeToRNTuple::SetTreeName(std::string treeName)
@@ -129,6 +138,11 @@ void TTreeToRNTuple::Convert()
     assert(file && !file->IsZombie());
 
     auto tree = file->Get<TTree>(fTreeName.c_str());
+    if(!tree) 
+    {
+        printf("Error: Tree \"%s\" is not found!\n", fTreeName.c_str());
+        exit(0);
+    }
 
     //
     // Get the scheme of the tree
@@ -139,7 +153,7 @@ void TTreeToRNTuple::Convert()
         assert(branch->GetNleaves() == 1);
 
         TLeaf *leaf = static_cast<TLeaf *>(branch->GetListOfLeaves()->First());
-        std::cout << "leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: " << leaf->GetTitle()
+        std::cout << "In root file detect leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: " << leaf->GetTitle()
                   << "; leaf length: " << leaf->GetLenStatic() << "; leaf type size: " << leaf->GetLenType() << std::endl;
 
         if (typeid(*branch) == typeid(TBranchSTL) || typeid(*branch) == typeid(TBranchElement))
