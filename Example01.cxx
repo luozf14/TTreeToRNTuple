@@ -13,15 +13,13 @@ int main(int argc, char **argv)
     std::string treeName = "MixedTree";
     std::string compressionAlgo = "zstd";
     std::vector<std::string> dictionary = {"../data/SimpleClass_cxx.so"};
+    bool enableMtiltiThread = false;
 
     //convert
     std::unique_ptr<TTreeToRNTuple> conversion = std::make_unique<TTreeToRNTuple>(inputFile, outputFile, treeName);
-    // conversion->SetInputFile(inputFile);
-    // conversion->SetOutputFile(outputFile);
-    // conversion->SetTreeName(treeName);
     conversion->SetCompressionAlgo(compressionAlgo);
     conversion->SetDictionary(dictionary);
-    conversion->EnableMultiThread();
+    conversion->EnableMultiThread(enableMtiltiThread);
     conversion->Convert();
 
     //view
@@ -33,7 +31,7 @@ int main(int argc, char **argv)
     printf("The %dth entry is shown below:\n", nEntry);
     ntuple->Show(nEntry, ENTupleShowFormat::kCompleteJSON);
     
-    return 1;
+    return 0;
 }
 
    
