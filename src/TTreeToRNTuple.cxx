@@ -144,6 +144,9 @@ void TTreeToRNTuple::Convert()
         exit(0);
     }
 
+    Long_t nEntries = tree->GetEntries();
+    printf("Number of entries in tree \"%s\": %ld.\n", fTreeName.c_str(), nEntries);
+
     //
     // Get the scheme of the tree
     //
@@ -243,7 +246,6 @@ void TTreeToRNTuple::Convert()
     auto ntuple = RNTupleWriter::Recreate(std::move(model), fTreeName, fOutputFile, fWriteOptions);
 
     // Loop the tree
-    auto nEntries = tree->GetEntries();
     for (decltype(nEntries) i = 0; i < nEntries; ++i)
     {
         tree->GetEntry(i);
@@ -263,6 +265,20 @@ void TTreeToRNTuple::Convert()
         }
 
         ntuple->Fill(*entry);
+
+        if(i<nEntries-1)
+        {
+            printf("\rConverting[%.2lf%%]:", i*100.0/(nEntries-1));
+            int showNum = i*20/nEntries;
+            for(int j=1;j<=showNum;j++)
+            {
+                printf("▇");
+            }
+        }
+        else
+        {
+            printf("\rConversion completed[%.2lf%%]\n", i*100.0/(nEntries-1));
+        }
+        
     }
-    std::cout<<"Conversion completed!"<<std::endl;
 }
