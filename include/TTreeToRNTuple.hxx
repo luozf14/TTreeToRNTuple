@@ -66,7 +66,7 @@ public:
     void SetTreeName(std::string treeName);
     void SetCompressionAlgo(std::string compressionAlgo);
     void SetDictionary(std::vector<std::string> dictionary);
-    void EnableMultiThread();
+    void EnableMultiThread(bool mtFlag);
     void Convert();
 
 private:
