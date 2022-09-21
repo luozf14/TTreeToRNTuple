@@ -258,23 +258,25 @@ void TTreeToRNTuple::Convert()
     auto entry = model->CreateBareEntry();
     for (auto &f1 : fFlatFields)
     {
+        // f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
+        // entry->CaptureValueUnsafe(f1.ntupleName, f1.ntupleBuffer.get());
         if (f1.isVariableSizedArray)
         {
             f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
             entry->CaptureValueUnsafe(f1.ntupleName, f1.ntupleBuffer.get());
-            std::cout << "f1.isVariableSizedArray" << std::endl;
+            // std::cout << "f1.isVariableSizedArray" << std::endl;
         }
         else if (!f1.isVariableSizedArray && f1.arrayLength >= 1)
         {
-            f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
-            entry->CaptureValueUnsafe(f1.ntupleName, f1.ntupleBuffer.get());
-            std::cout << "!f1.isVariableSizedArray && f1.arrayLength >= 1" << std::endl;
+            // f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
+            entry->CaptureValueUnsafe(f1.ntupleName, f1.treeBuffer.get());
+            // std::cout << "!f1.isVariableSizedArray && f1.arrayLength >= 1" << std::endl;
         }
     }
     for (auto &c1 : fContainerFields)
     {
         entry->CaptureValueUnsafe(c1.ntupleName, *c1.treeBuffer.get());
-        std::cout << "container" << std::endl;
+        // std::cout << "container" << std::endl;
     }
 
     // Create the RNTuple file
@@ -293,26 +295,26 @@ void TTreeToRNTuple::Convert()
                 ((std::vector<unsigned char> *)f1.ntupleBuffer.get())->resize(arrayLengthCurrentEntry * f1.leafTypeSize);
                 std::memcpy(((std::vector<unsigned char> *)f1.ntupleBuffer.get())->data(), f1.treeBuffer.get(), arrayLengthCurrentEntry * f1.leafTypeSize);
             }
-            if (!f1.isVariableSizedArray && f1.arrayLength >= 1)
-            {
-                std::memcpy(f1.ntupleBuffer.get(), f1.treeBuffer.get(), f1.arrayLength * f1.leafTypeSize);
-            }
+            // if (!f1.isVariableSizedArray && f1.arrayLength >= 1)
+            // {
+            //     std::memcpy(f1.ntupleBuffer.get(), f1.treeBuffer.get(), f1.arrayLength * f1.leafTypeSize);
+            // }
         }
 
         ntuple->Fill(*entry);
-        printf("Entry: %ld\n", i);
-        // if(i<nEntries-1)
-        // {
-        //     printf("\rConverting[%.2lf%%]:", i*100.0/(nEntries-1));
-        //     int showNum = i*20/nEntries;
-        //     for(int j=1;j<=showNum;j++)
-        //     {
-        //         printf("▇");
-        //     }
-        // }
-        // else
-        // {
-        //     printf("\rConversion completed[%.2lf%%]\n", i*100.0/(nEntries-1));
-        // }
+        // printf("Entry: %ld\n", i);
+        if(i<nEntries-1)
+        {
+            printf("\rConverting[%.2lf%%]:", i*100.0/(nEntries-1));
+            int showNum = i*20/nEntries;
+            for(int j=1;j<=showNum;j++)
+            {
+                printf("▇");
+            }
+        }
+        else
+        {
+            printf("\rConversion completed[%.2lf%%]\n", i*100.0/(nEntries-1));
+        }
     }
 }
