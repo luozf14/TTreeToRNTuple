@@ -69,6 +69,7 @@ public:
     void SetCompressionAlgo(std::string compressionAlgo);
     void SetCompressionAlgoLevel(std::string compressionAlgo, int compressionLevel);
     void SetDictionary(std::vector<std::string> dictionary);
+    void SetSubBranch(std::vector<std::string> subBranch);
     // void EnableMultiThread(bool mtFlag);
     void Convert();
 
@@ -77,6 +78,7 @@ private:
     std::string fInputFile;
     std::string fOutputFile;
     std::string fTreeName;
+    std::vector<std::string> fSubBranches;
     std::vector<FlatField> fFlatFields;
     std::vector<ContainerField> fContainerFields;
     std::string SanitizeBranchName(std::string name);

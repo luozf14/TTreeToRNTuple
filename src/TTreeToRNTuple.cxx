@@ -143,6 +143,14 @@ void TTreeToRNTuple::SetDictionary(std::vector<std::string> dictionary)
     }
 }
 
+void TTreeToRNTuple::SetSubBranch(std::vector<std::string> subBranch)
+{
+    for (auto sb : subBranch)
+    {
+        fSubBranches.push_back(SanitizeBranchName(sb));
+    }
+}
+
 // void TTreeToRNTuple::EnableMultiThread(bool mtFlag)
 // {
 //     if (mtFlag)
@@ -186,6 +194,10 @@ void TTreeToRNTuple::Convert()
     {
         assert(branch);
         assert(branch->GetNleaves() == 1);
+        if (!fSubBranches.empty() && std::find(fSubBranches.begin(), fSubBranches.end(), SanitizeBranchName(branch->GetName())) == fSubBranches.end())
+        {
+            continue;
+        }
 
         TLeaf *leaf = static_cast<TLeaf *>(branch->GetListOfLeaves()->First());
         std::cout << "In root file detect leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: " << leaf->GetTitle()
@@ -303,18 +315,18 @@ void TTreeToRNTuple::Convert()
 
         ntuple->Fill(*entry);
         // printf("Entry: %ld\n", i);
-        if(i<nEntries-1)
+        if (i < nEntries - 1)
         {
-            printf("\rConverting[%.2lf%%]:", i*100.0/(nEntries-1));
-            int showNum = i*20/nEntries;
-            for(int j=1;j<=showNum;j++)
+            printf("\rConverting[%.2lf%%]:", i * 100.0 / (nEntries - 1));
+            int showNum = i * 20 / nEntries;
+            for (int j = 1; j <= showNum; j++)
             {
                 printf("▇");
             }
         }
         else
         {
-            printf("\rConversion completed[%.2lf%%]\n", i*100.0/(nEntries-1));
+            printf("\rConversion completed[%.2lf%%]\n", i * 100.0 / (nEntries - 1));
         }
     }
 }

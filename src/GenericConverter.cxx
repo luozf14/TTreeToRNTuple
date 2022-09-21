@@ -6,7 +6,8 @@
 static void Usage(char *progname)
 {
     std::cout << "Usage: " << progname << " -i <input.root> -o <output.ntuple> -t(ree) <tree name> "
-              << "[-d(ictionary) <dictionary names>] [-c(ompression) <compression algorithm>]"
+              << "[-d(ictionary) <dictionary name>] -s(ub branch) <branch name>"
+              << "[-c(ompression) <compression algorithm>]"
               << std::endl;
 }
 
@@ -17,10 +18,11 @@ int main(int argc, char **argv)
     std::string treeName;
     std::string compressionAlgo = "none";
     std::vector<std::string> dictionaries = {};
+    std::vector<std::string> subBranches = {};
     bool enableMtiltiThread = false;
 
     int inputArg;
-    while ((inputArg = getopt(argc, argv, "hi:o:c:d:b:t:")) != -1)
+    while ((inputArg = getopt(argc, argv, "hi:o:c:d:b:t:s:")) != -1)
     {
         switch (inputArg)
         {
@@ -39,6 +41,9 @@ int main(int argc, char **argv)
         case 'd':
             dictionaries.push_back(optarg);
             break;
+        case 's':
+            subBranches.push_back(optarg);
+        break;
         // case 'm':
         //     enableMtiltiThread = true;
         //     break;
@@ -61,6 +66,7 @@ int main(int argc, char **argv)
     std::unique_ptr<TTreeToRNTuple> conversion = std::make_unique<TTreeToRNTuple>(inputFile, outputFile, treeName);
     conversion->SetCompressionAlgo(compressionAlgo);
     conversion->SetDictionary(dictionaries);
+    conversion->SetSubBranch(subBranches);
     // conversion->EnableMultiThread(enableMtiltiThread);
     conversion->Convert();
     
