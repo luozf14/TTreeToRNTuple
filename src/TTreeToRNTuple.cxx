@@ -96,7 +96,7 @@ void TTreeToRNTuple::SetCompressionAlgo(std::string compressionAlgo)
     }
     else
     {
-        abort();
+        throw RException(R__FAIL("Error: compression algorithm \'" + compressionAlgo + "\' is not found!\n"));
     }
 }
 
@@ -124,7 +124,7 @@ void TTreeToRNTuple::SetCompressionAlgoLevel(std::string compressionAlgo, int co
     }
     else
     {
-        abort();
+        throw RException(R__FAIL("Error: compression algorithm \'" + compressionAlgo + "\' is not found!\n"));
     }
 }
 
@@ -135,12 +135,11 @@ void TTreeToRNTuple::SetDictionary(std::vector<std::string> dictionary)
         int loadStatus = gSystem->Load(d.c_str());
         if (loadStatus == 0 || loadStatus == 1)
         {
-            printf("Load dictionary \"%s\" successfully!\n", d.c_str());
+            printf("Load dictionary \'%s\' successfully!\n", d.c_str());
         }
         else
         {
-            printf("Error: Load dictionary \"%s\" unsuccessfully! Load status: %d\n", d.c_str(), loadStatus);
-            exit(0);
+            throw RException(R__FAIL("Error: Load dictionary \'" + d + "\' unsuccessfully!\n"));
         }
     }
 }
@@ -181,7 +180,7 @@ void TTreeToRNTuple::Convert(std::unique_ptr<ProgressListener> listener)
     auto tree = file->Get<TTree>(fTreeName.c_str());
     if (!tree)
     {
-        throw RException(R__FAIL("Tree \"" + fTreeName + "\" is not found!\n"));
+        throw RException(R__FAIL("Tree \'" + fTreeName + "\' is not found!\n"));
     }
 
     Long_t nEntries = tree->GetEntries();
