@@ -172,7 +172,20 @@ void TTreeToRNTuple::SetOutputFile(std::string output)
     fOutputFile = output;
 }
 
-void TTreeToRNTuple::Convert(std::unique_ptr<ProgressListener> listener)
+void TTreeToRNTuple::SetDefaultProgressCallbackFunc()
+{
+    fCallbackFunc = [] (int current, int total){
+        int interval = total / 100;
+        if (current % interval == 0)
+        {
+            fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
+                    current, total,
+                    (static_cast<float>(current) / total) * 100);
+        }
+    };
+}
+
+void TTreeToRNTuple::Convert()
 {
     std::unique_ptr<TFile> file(TFile::Open(fInputFile.c_str()));
     assert(file && !file->IsZombie());
@@ -313,13 +326,11 @@ void TTreeToRNTuple::Convert(std::unique_ptr<ProgressListener> listener)
         }
 
         ntuple->Fill(*entry);
-        if (listener)
+        if (fCallbackFunc)
         {
-            listener->Notify(i, nEntries);
+            fCallbackFunc(i, nEntries);
         }
     }
-    if (listener)
-    {
-        listener->NotifyComplete(nEntries);
-    }
+    fprintf(stderr, "\n\033[00;32mConversion completed!\n\033[00m");
+    
 }

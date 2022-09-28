@@ -35,6 +35,8 @@ using RNTupleWriteOptions = ROOT::Experimental::RNTupleWriteOptions;
 using RNTupleWriter = ROOT::Experimental::RNTupleWriter;
 using RCompressionSetting = ROOT::RCompressionSetting;
 
+typedef void (*callback_t)(int, int);
+
 struct FlatField
 {
     std::string treeName;
@@ -56,44 +58,55 @@ struct ContainerField
     std::unique_ptr<unsigned char[]> ntupleBuffer;
 };
 
-class ProgressListener
-{
-public:
-    virtual void Notify(int current, int total) = 0;
-    virtual void NotifyComplete(int total) = 0;
-};
+// class ProgressListener
+// {
+// public:
+//     virtual void Notify(int current, int total) = 0;
+//     virtual void NotifyComplete(int total) = 0;
+// };
 
-class DefaultPrintProgressSimple : public ProgressListener
-{
-public:
-    void Notify(int current, int total) override
-    {
-        fprintf(stderr, "Processing entry %d of %d\n", current, total);
-    }
-    void NotifyComplete(int total) override
-    {
-        fprintf(stderr, "\nConversion completed!\n");
-    }
-};
+// class DefaultPrintProgressSimple : public ProgressListener
+// {
+// public:
+//     void Notify(int current, int total) override
+//     {
+//         fprintf(stderr, "Processing entry %d of %d\n", current, total);
+//     }
+//     void NotifyComplete(int total) override
+//     {
+//         fprintf(stderr, "\nConversion completed!\n");
+//     }
+// };
 
-class DefaultPrintProgressOverwrite : public ProgressListener
+// class DefaultPrintProgressOverwrite : public ProgressListener
+// {
+// public:
+//     void Notify(int current, int total) override
+//     {
+//         int interval = total / 100;
+//         if (current % interval == 0)
+//         {
+//             fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
+//                     current, total,
+//                     (static_cast<float>(current) / total) * 100);
+//         }
+//     }
+//     void NotifyComplete(int total) override
+//     {
+//         fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]!\n", total, total, 100.);
+//     }
+// };
+
+void DefaultPrintProgressOverwrite(int current, int total)
 {
-public:
-    void Notify(int current, int total) override
+    int interval = total / 100;
+    if (current % interval == 0)
     {
-        int interval = total / 100;
-        if (current % interval == 0)
-        {
-            fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
-                    current, total,
-                    (static_cast<float>(current) / total) * 100);
-        }
+        fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
+                current, total,
+                (static_cast<float>(current) / total) * 100);
     }
-    void NotifyComplete(int total) override
-    {
-        fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]!\n", total, total, 100.);
-    }
-};
+}
 
 class TTreeToRNTuple
 {
@@ -110,7 +123,9 @@ public:
     void SetDictionary(std::vector<std::string> dictionary);
     void SelectBranches(std::vector<std::string> subBranch);
     void SelectAllBranches();
-    void Convert(std::unique_ptr<ProgressListener> listener);
+    void SetDefaultProgressCallbackFunc();
+    void SetUserProgressCallbackFunc(callback_t);
+    void Convert();
 
 private:
     RNTupleWriteOptions fWriteOptions;
@@ -121,5 +136,6 @@ private:
     std::vector<FlatField> fFlatFields;
     std::vector<ContainerField> fContainerFields;
     std::string SanitizeBranchName(std::string name);
+    callback_t fCallbackFunc;
 };
 #endif // TTREETORNTUPLE_H
