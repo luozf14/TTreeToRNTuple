@@ -19,7 +19,6 @@ int main(int argc, char **argv)
     std::string compressionAlgo = "none";
     std::vector<std::string> dictionaries = {};
     std::vector<std::string> subBranches = {};
-    bool enableMtiltiThread = false;
 
     int inputArg;
     while ((inputArg = getopt(argc, argv, "hi:o:c:d:b:t:s:")) != -1)
@@ -43,10 +42,7 @@ int main(int argc, char **argv)
             break;
         case 's':
             subBranches.push_back(optarg);
-        break;
-        // case 'm':
-        //     enableMtiltiThread = true;
-        //     break;
+            break;
         case 't':
             treeName = optarg;
             break;
@@ -57,7 +53,7 @@ int main(int argc, char **argv)
         }
     }
 
-    if(inputFile.empty()||outputFile.empty()||treeName.empty())
+    if (inputFile.empty() || outputFile.empty() || treeName.empty())
     {
         printf("Error: Minimal required parameters: -i <input.root> -o <output.ntuple> -t(ree) <tree name>\n)");
         exit(0);
@@ -66,9 +62,8 @@ int main(int argc, char **argv)
     std::unique_ptr<TTreeToRNTuple> conversion = std::make_unique<TTreeToRNTuple>(inputFile, outputFile, treeName);
     conversion->SetCompressionAlgo(compressionAlgo);
     conversion->SetDictionary(dictionaries);
-    conversion->SetSubBranch(subBranches);
-    // conversion->EnableMultiThread(enableMtiltiThread);
-    conversion->Convert();
-    
+    conversion->SelectBranches(subBranches);
+    conversion->Convert(std::make_unique<DefaultPrintProgressOverwrite>());
+
     return 0;
 }

@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <stdio.h>
+#include <unistd.h>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -11,6 +13,26 @@
 using RNTupleReader = ROOT::Experimental::RNTupleReader;
 using ENTupleShowFormat = ROOT::Experimental::ENTupleShowFormat;
 using ENTupleInfo = ROOT::Experimental::ENTupleInfo;
+
+// user-defined print progress
+class PrintProgressOverwriteUser : public ProgressListener
+{
+public:
+    void Notify(int current, int total) override
+    {
+        int interval = 100;
+        if (current % 100 == 0)
+        {
+            fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
+                    current, total,
+                    (static_cast<float>(current) / total) * 100);
+        }
+    }
+    void NotifyComplete(int total) override
+    {
+        fprintf(stderr, "\nConversion completed!\n");
+    }
+};
 
 void CreateTTree()
 {
@@ -27,29 +49,31 @@ void CreateTTree()
     tree->Branch("y", y, "y[5]/D");
     tree->Branch("nZ", &nZ, "nZ/I");
     tree->Branch("z", z, "z[nZ]/D");
-    tree->Branch("array_float",&array_float);
+    tree->Branch("array_float", &array_float);
 
     TRandom3 ranGen;
-    for(int i=0; i<1e7; i++)
+    for (int i = 0; i < 1e5; i++)
     {
-        for(int j=0;j<5;j++)
+        for (int j = 0; j < 5; j++)
         {
-            if(j<3) x[j]=ranGen.Gaus(0,1);
-            y[j]=ranGen.Rndm(2.);
+            if (j < 3)
+                x[j] = ranGen.Gaus(0, 1);
+            y[j] = ranGen.Rndm(2.);
         }
-        nZ=(Int_t)(ranGen.Rndm()*10);
-        for(Int_t k=0;k<nZ;k++)
+        nZ = (Int_t)(ranGen.Rndm() * 10);
+        for (Int_t k = 0; k < nZ; k++)
         {
-            z[k]=ranGen.Rndm();
+            z[k] = ranGen.Rndm();
         }
-        for(int k=0;k<10;k++) array_float[k]=(ranGen.Rndm()*100);
+        for (int k = 0; k < 10; k++)
+            array_float[k] = (ranGen.Rndm() * 100);
 
         tree->Fill();
     }
 
     rootFile->Write();
     rootFile->Close();
-    std::cout<<"Created root file containing ttree: T2."<<std::endl;
+    std::cout << "Created root file containing ttree: T2." << std::endl;
 }
 
 void Convert()
@@ -63,7 +87,7 @@ void Convert()
     std::unique_ptr<TTreeToRNTuple> conversion = std::make_unique<TTreeToRNTuple>(inputFile, outputFile, treeName);
     conversion->SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     conversion->SetDictionary(dictionary);
-    conversion->Convert();
+    conversion->Convert(std::make_unique<DefaultPrintProgressOverwrite>());
 }
 
 void View()
@@ -79,7 +103,7 @@ void View()
 
 void Analyze()
 {
-    //ttree side
+    // ttree side
     Float_t x[3];
     Double_t y[5];
     Int_t nZ;
@@ -93,32 +117,36 @@ void Analyze()
     tree->SetBranchAddress("y", &y);
     tree->SetBranchAddress("nZ", &nZ);
     tree->SetBranchAddress("z", &z);
-    tree->SetBranchAddress("array_float",&array_float);
+    tree->SetBranchAddress("array_float", &array_float);
 
-    //rntuple side
+    // rntuple side
     auto model = RNTupleModel::Create();
-    auto fldFx = model->MakeField<std::array<float,3>>("x");
-    auto fldDy = model->MakeField<std::array<double,5>>("y");
+    auto fldFx = model->MakeField<std::array<float, 3>>("x");
+    auto fldDy = model->MakeField<std::array<double, 5>>("y");
     auto fldInZ = model->MakeField<int>("nZ");
     auto fldDz = model->MakeField<std::vector<double>>("z");
-    auto fldAarray_float = model->MakeField<std::array<float, 10>>("array_float");  
-    
-    auto ntuple = RNTupleReader::Open(std::move(model),"T2", "TestFile.ntuple");
+    auto fldAarray_float = model->MakeField<std::array<float, 10>>("array_float");
 
-    //compare
-    for (auto entryId : *ntuple) 
+    auto ntuple = RNTupleReader::Open(std::move(model), "T2", "TestFile.ntuple");
+
+    // compare
+    for (auto entryId : *ntuple)
     {
         ntuple->LoadEntry(entryId);
         tree->GetEntry(entryId);
-        if(!std::equal(x,x+sizeof(x)/sizeof(*x), fldFx->begin())) printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "x", "x");
-        if(!std::equal(y,y+sizeof(y)/sizeof(*y), fldDy->begin())) printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "y", "y");
-        if(nZ!=*fldInZ) printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "nZ", "nZ");
-        if(!std::equal(z,z+nZ, fldDz->begin())) printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "z", "z");
-        if(!std::equal(array_float.begin(),array_float.end(), fldAarray_float->begin())) printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "array_float", "array_float");
+        if (!std::equal(x, x + sizeof(x) / sizeof(*x), fldFx->begin()))
+            printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "x", "x");
+        if (!std::equal(y, y + sizeof(y) / sizeof(*y), fldDy->begin()))
+            printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "y", "y");
+        if (nZ != *fldInZ)
+            printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "nZ", "nZ");
+        if (!std::equal(z, z + nZ, fldDz->begin()))
+            printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "z", "z");
+        if (!std::equal(array_float.begin(), array_float.end(), fldAarray_float->begin()))
+            printf("At entry %d, field \"%s\" does not match branch \"%s\"!\n", entryId, "array_float", "array_float");
     }
-    std::cout<<"Comparison completed!"<<std::endl;
+    std::cout << "Comparison completed!" << std::endl;
 }
-
 
 int main(int argc, char **argv)
 {

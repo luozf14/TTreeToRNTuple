@@ -15,15 +15,14 @@ int main(int argc, char **argv)
     int compressionLevel = 0;
     std::vector<std::string> dictionary = {"../data/SimpleClass_cxx.so"};
     std::vector<std::string> subBranches = {"simpleClass","x"};
-    // bool enableMtiltiThread = false;
 
     //convert
     std::unique_ptr<TTreeToRNTuple> conversion = std::make_unique<TTreeToRNTuple>(inputFile, outputFile, treeName);
     conversion->SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     conversion->SetDictionary(dictionary);
-    conversion->SetSubBranch(subBranches);
-    // conversion->EnableMultiThread(enableMtiltiThread);
-    conversion->Convert();
+    conversion->SelectBranches(subBranches);
+    // conversion->SelectAllBranches();
+    conversion->Convert(std::make_unique<DefaultPrintProgressOverwrite>());
 
     //view
     std::unique_ptr<TFile> ntupleFile(TFile::Open(outputFile.c_str()));
