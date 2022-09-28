@@ -14,26 +14,6 @@ using RNTupleReader = ROOT::Experimental::RNTupleReader;
 using ENTupleShowFormat = ROOT::Experimental::ENTupleShowFormat;
 using ENTupleInfo = ROOT::Experimental::ENTupleInfo;
 
-// user-defined print progress
-class PrintProgressOverwriteUser : public ProgressListener
-{
-public:
-    void Notify(int current, int total) override
-    {
-        int interval = 100;
-        if (current % 100 == 0)
-        {
-            fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
-                    current, total,
-                    (static_cast<float>(current) / total) * 100);
-        }
-    }
-    void NotifyComplete(int total) override
-    {
-        fprintf(stderr, "\nConversion completed!\n");
-    }
-};
-
 void CreateTTree()
 {
     auto rootFile = std::make_shared<TFile>("TestFile.root", "RECREATE");
@@ -87,7 +67,8 @@ void Convert()
     std::unique_ptr<TTreeToRNTuple> conversion = std::make_unique<TTreeToRNTuple>(inputFile, outputFile, treeName);
     conversion->SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     conversion->SetDictionary(dictionary);
-    conversion->Convert(std::make_unique<DefaultPrintProgressOverwrite>());
+    conversion->SetDefaultProgressCallbackFunc();
+    conversion->Convert();
 }
 
 void View()

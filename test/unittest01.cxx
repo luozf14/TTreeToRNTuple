@@ -62,7 +62,7 @@ TEST(UnitTest, CreateTTree)
     Int_t nX,nY;
     std::vector<Double_t> tempVecDouble;
     std::vector<std::vector<float>> tempVecVecfloat;
-    for(int i=0; i<1e5; i++)
+    for(int i=0; i<9e5; i++)
     {
         simpleClass->SetInt(i);
         simpleClass->SetFloat(ranGen.Rndm()*10);
@@ -111,6 +111,7 @@ TEST(UnitTest, CreateTTree)
     }
     rootFile->Write();
     rootFile->Close();
+    delete simpleClass;
     std::cout << "Created root file containing ttree: MixedTree." << std::endl;
 
 }
@@ -127,7 +128,8 @@ TEST(UnitTest, Conversion)
     conversion->SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     conversion->SetDictionary(dictionary);
     conversion->SelectAllBranches();
-    EXPECT_NO_THROW(conversion->Convert(std::make_unique<DefaultPrintProgressOverwrite>()););
+    conversion->SetDefaultProgressCallbackFunc();
+    EXPECT_NO_THROW(conversion->Convert(););
 }
 
 TEST(UnitTest, Comparison)
@@ -262,6 +264,7 @@ TEST(UnitTest, Comparison)
         EXPECT_EQ(simpleClass->GetVecVecFloat(), fldSimpleClass->GetVecVecFloat())<<"[SimpleClass::GetVecVecFloat()] Branch 'simpleClass' and field 'simpleClass' differ at entry "<< entryId;
         
     }
+    delete simpleClass;
     std::cout << "Comparison completed!" << std::endl;
 }
 

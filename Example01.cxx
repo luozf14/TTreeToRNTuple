@@ -22,7 +22,8 @@ int main(int argc, char **argv)
     conversion->SetDictionary(dictionary);
     conversion->SelectBranches(subBranches);
     // conversion->SelectAllBranches();
-    conversion->Convert(std::make_unique<DefaultPrintProgressOverwrite>());
+    conversion->SetDefaultProgressCallbackFunc();
+    conversion->Convert();
 
     //view
     std::unique_ptr<TFile> ntupleFile(TFile::Open(outputFile.c_str()));
