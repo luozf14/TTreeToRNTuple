@@ -48,3 +48,6 @@ target_link_libraries(GenericConverter PRIVATE TTreeToRNTuple ${ROOT_LIBRARIES})
 add_executable(test01 Test01.cxx)
 target_include_directories(test01 PRIVATE  ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(test01 PRIVATE TTreeToRNTuple ${ROOT_LIBRARIES})
+
+# unit test
+add_subdirectory(test)
