@@ -2,6 +2,7 @@
 #include <ROOT/RNTuple.hxx>
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTupleOptions.hxx>
+#include <ROOT/RError.hxx>
 
 #include <Compression.h>
 #include <TBranch.h>
@@ -33,6 +34,7 @@ using RNTupleModel = ROOT::Experimental::RNTupleModel;
 using RNTupleWriteOptions = ROOT::Experimental::RNTupleWriteOptions;
 using RNTupleWriter = ROOT::Experimental::RNTupleWriter;
 using RCompressionSetting = ROOT::RCompressionSetting;
+using RException = ROOT::Experimental::RException;
 
 TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName)
 {
@@ -143,19 +145,18 @@ void TTreeToRNTuple::SetDictionary(std::vector<std::string> dictionary)
     }
 }
 
-void TTreeToRNTuple::SetSubBranch(std::vector<std::string> subBranch)
+void TTreeToRNTuple::SelectBranches(std::vector<std::string> subBranch)
 {
     for (auto sb : subBranch)
     {
-        fSubBranches.push_back(SanitizeBranchName(sb));
+        fSelectedBranches.push_back(SanitizeBranchName(sb));
     }
 }
 
-// void TTreeToRNTuple::EnableMultiThread(bool mtFlag)
-// {
-//     if (mtFlag)
-//         ROOT::EnableImplicitMT();
-// }
+void TTreeToRNTuple::SelectAllBranches()
+{
+    fSelectedBranches = {};
+}
 
 void TTreeToRNTuple::SetTreeName(std::string treeName)
 {
@@ -172,7 +173,7 @@ void TTreeToRNTuple::SetOutputFile(std::string output)
     fOutputFile = output;
 }
 
-void TTreeToRNTuple::Convert()
+void TTreeToRNTuple::Convert(std::unique_ptr<ProgressListener> listener)
 {
     std::unique_ptr<TFile> file(TFile::Open(fInputFile.c_str()));
     assert(file && !file->IsZombie());
@@ -180,8 +181,7 @@ void TTreeToRNTuple::Convert()
     auto tree = file->Get<TTree>(fTreeName.c_str());
     if (!tree)
     {
-        printf("Error: Tree \"%s\" is not found!\n", fTreeName.c_str());
-        exit(0);
+        throw RException(R__FAIL("Tree \"" + fTreeName + "\" is not found!\n"));
     }
 
     Long_t nEntries = tree->GetEntries();
@@ -194,7 +194,7 @@ void TTreeToRNTuple::Convert()
     {
         assert(branch);
         assert(branch->GetNleaves() == 1);
-        if (!fSubBranches.empty() && std::find(fSubBranches.begin(), fSubBranches.end(), SanitizeBranchName(branch->GetName())) == fSubBranches.end())
+        if (!fSelectedBranches.empty() && std::find(fSelectedBranches.begin(), fSelectedBranches.end(), SanitizeBranchName(branch->GetName())) == fSelectedBranches.end())
         {
             continue;
         }
@@ -295,7 +295,7 @@ void TTreeToRNTuple::Convert()
     auto ntuple = RNTupleWriter::Recreate(std::move(model), fTreeName, fOutputFile, fWriteOptions);
 
     // Loop the tree
-    for (decltype(nEntries) i = 0; i < nEntries; ++i)
+    for (decltype(nEntries) i = 0; i < nEntries; i++)
     {
         tree->GetEntry(i);
 
@@ -314,19 +314,13 @@ void TTreeToRNTuple::Convert()
         }
 
         ntuple->Fill(*entry);
-        // printf("Entry: %ld\n", i);
-        if (i < nEntries - 1)
+        if (listener)
         {
-            printf("\rConverting[%.2lf%%]:", i * 100.0 / (nEntries - 1));
-            int showNum = i * 20 / nEntries;
-            for (int j = 1; j <= showNum; j++)
-            {
-                printf("▇");
-            }
+            listener->Notify(i, nEntries);
         }
-        else
-        {
-            printf("\rConversion completed[%.2lf%%]\n", i * 100.0 / (nEntries - 1));
-        }
+    }
+    if (listener)
+    {
+        listener->NotifyComplete(nEntries);
     }
 }

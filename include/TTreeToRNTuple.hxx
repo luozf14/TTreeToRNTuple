@@ -56,29 +56,64 @@ struct ContainerField
     std::unique_ptr<unsigned char[]> ntupleBuffer;
 };
 
+class ProgressListener
+{
+public:
+    virtual void Notify(int current, int total) = 0;
+    virtual void NotifyComplete(int total) = 0;
+};
+
+class DefaultPrintProgressSimple : public ProgressListener
+{
+public:
+    void Notify(int current, int total) override
+    {
+        fprintf(stderr, "Processing entry %d of %d\n", current, total);
+    }
+    void NotifyComplete(int total) override
+    {
+        fprintf(stderr, "\nConversion completed!\n");
+    }
+};
+
+class DefaultPrintProgressOverwrite : public ProgressListener
+{
+public:
+    void Notify(int current, int total) override
+    {
+        fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
+                current, total,
+                (static_cast<float>(current) / total) * 100);
+    }
+    void NotifyComplete(int total) override
+    {
+        fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]!\n", total, total, 100.);
+    }
+};
+
 class TTreeToRNTuple
 {
 public:
-    // TTreeToRNTuple(){};
     TTreeToRNTuple(std::string input, std::string output, std::string treeName);
     TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel);
     TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel, std::vector<std::string> dictionary);
+    ~TTreeToRNTuple(){};
     void SetInputFile(std::string input);
     void SetOutputFile(std::string output);
     void SetTreeName(std::string treeName);
     void SetCompressionAlgo(std::string compressionAlgo);
     void SetCompressionAlgoLevel(std::string compressionAlgo, int compressionLevel);
     void SetDictionary(std::vector<std::string> dictionary);
-    void SetSubBranch(std::vector<std::string> subBranch);
-    // void EnableMultiThread(bool mtFlag);
-    void Convert();
+    void SelectBranches(std::vector<std::string> subBranch);
+    void SelectAllBranches();
+    void Convert(std::unique_ptr<ProgressListener> listener);
 
 private:
     RNTupleWriteOptions fWriteOptions;
     std::string fInputFile;
     std::string fOutputFile;
     std::string fTreeName;
-    std::vector<std::string> fSubBranches;
+    std::vector<std::string> fSelectedBranches;
     std::vector<FlatField> fFlatFields;
     std::vector<ContainerField> fContainerFields;
     std::string SanitizeBranchName(std::string name);
