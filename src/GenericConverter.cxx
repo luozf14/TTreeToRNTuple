@@ -63,7 +63,8 @@ int main(int argc, char **argv)
     conversion->SetCompressionAlgo(compressionAlgo);
     conversion->SetDictionary(dictionaries);
     conversion->SelectBranches(subBranches);
-    conversion->Convert(std::make_unique<DefaultPrintProgressOverwrite>());
+    conversion->SetDefaultProgressCallbackFunc();
+    conversion->Convert();
 
     return 0;
 }
