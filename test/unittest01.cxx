@@ -50,10 +50,11 @@ TEST(UnitTest, CreateTTree)
     tree->Branch("z", z, "z[nZ]/D");
     tree->Branch("array_float",&array_float);
     tree->Branch("vec_float","std::vector<Float_t>",&vec_float);
-
     tree->Branch("vec_bool",&vec_bool);
-    tree->Branch("RVec_double",&RVec_double);
-    tree->Branch("RVec_string",&RVec_string);
+
+    // tree->Branch("RVec_double",&RVec_double);
+    // tree->Branch("RVec_string",&RVec_string);
+
     tree->Branch("pair_", &pair_);
     tree->Branch("tuple_", &tuple_);
     tree->Branch("string_","std::string",&string_);
@@ -62,7 +63,7 @@ TEST(UnitTest, CreateTTree)
     Int_t nX,nY;
     std::vector<Double_t> tempVecDouble;
     std::vector<std::vector<float>> tempVecVecfloat;
-    for(int i=0; i<9e5; i++)
+    for(int i=0; i<1e7; i++)
     {
         simpleClass->SetInt(i);
         simpleClass->SetFloat(ranGen.Rndm()*10);
@@ -121,14 +122,17 @@ TEST(UnitTest, Conversion)
     std::string inputFile = "TestFile.root";
     std::string outputFile = "TestFile.ntuple";
     std::string treeName = "MixedTree";
-    std::string compressionAlgo = "none";
-    int compressionLevel = 0;
+    std::string compressionAlgo = "lzma";
+    int compressionLevel = 9;
     std::vector<std::string> dictionary = {"../../test/SimpleClass_cxx"};
     std::unique_ptr<TTreeToRNTuple> conversion = std::make_unique<TTreeToRNTuple>(inputFile, outputFile, treeName);
     conversion->SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     conversion->SetDictionary(dictionary);
     conversion->SelectAllBranches();
     conversion->SetDefaultProgressCallbackFunc();
+    // conversion->SetUserProgressCallbackFunc([](int current, int total){fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
+                // current, total,
+                // (static_cast<float>(current) / total) * 100);});
     EXPECT_NO_THROW(conversion->Convert(););
 }
 
@@ -149,9 +153,12 @@ TEST(UnitTest, Comparison)
     std::pair<int, float>* pair_ = nullptr;
     std::tuple<std::string, int, float>* tuple_ = nullptr;
     std::string* string_ = nullptr;
+
     auto rootFile = std::make_shared<TFile>("TestFile.root", "READ");
     auto tree = rootFile->Get<TTree>("MixedTree");
+
     tree->SetBranchAddress("simpleClass",&simpleClass);
+
     tree->SetBranchAddress("x", &x);
     tree->SetBranchAddress("y", &y);
     tree->SetBranchAddress("nZ", &nZ);
@@ -159,14 +166,18 @@ TEST(UnitTest, Comparison)
     tree->SetBranchAddress("array_float",&array_float);
     tree->SetBranchAddress("vec_float",&vec_float);
     tree->SetBranchAddress("vec_bool",&vec_bool);
-    tree->SetBranchAddress("RVec_double",&RVec_double);
-    tree->SetBranchAddress("RVec_string",&RVec_string);
+
+    // tree->SetBranchAddress("RVec_double",&RVec_double);
+    // tree->SetBranchAddress("RVec_string",&RVec_string);
+
     tree->SetBranchAddress("pair_", &pair_);
     tree->SetBranchAddress("tuple_", &tuple_);
     tree->SetBranchAddress("string_",&string_);
 
     // rntuple side
     auto model = RNTupleModel::Create();
+    auto fldSimpleClass = model->MakeField<SimpleClass>("simpleClass");
+
     auto fldFx = model->MakeField<std::array<float, 3>>("x");
     auto fldDy = model->MakeField<std::array<double, 5>>("y");
     auto fldInZ = model->MakeField<int>("nZ");
@@ -174,12 +185,13 @@ TEST(UnitTest, Comparison)
     auto fldAarray_float = model->MakeField<std::array<float, 10>>("array_float");
     auto fldVec_float = model->MakeField<std::vector<float>>("vec_float");
     auto fldVec_bool = model->MakeField<std::vector<bool>>("vec_bool");
-    auto fldRVec_double = model->MakeField<ROOT::RVec<double>>("RVec_double");
-    auto fldRVec_string = model->MakeField<ROOT::RVec<std::string>>("RVec_string");
+
+    // auto fldRVec_double = model->MakeField<ROOT::RVec<double>>("RVec_double");
+    // auto fldRVec_string = model->MakeField<ROOT::RVec<std::string>>("RVec_string");
+
     auto fldPair = model->MakeField<std::pair<int, float>>("pair_");
     auto fldTuple = model->MakeField<std::tuple<std::string, int, float>>("tuple_");
     auto fldString = model->MakeField<std::string>("string_");
-    auto fldSimpleClass = model->MakeField<SimpleClass>("simpleClass");
 
     auto ntuple = RNTupleReader::Open(std::move(model), "MixedTree", "TestFile.ntuple");
     
@@ -188,6 +200,13 @@ TEST(UnitTest, Comparison)
     {
         ntuple->LoadEntry(entryId);
         tree->GetEntry(entryId);
+
+        //SimpleClass* simpleClass
+        EXPECT_EQ(simpleClass->GetInt(), fldSimpleClass->GetInt())<<"[SimpleClass::GetInt()] Branch 'simpleClass' and field 'simpleClass' differ at entry "<< entryId;
+        EXPECT_FLOAT_EQ(simpleClass->GetFloat(), fldSimpleClass->GetFloat())<<"[SimpleClass::GetFloat()] Branch 'simpleClass' and field 'simpleClass' differ at entry "<< entryId;
+        EXPECT_EQ(simpleClass->GetVecDouble(), fldSimpleClass->GetVecDouble())<<"[SimpleClass::GetVecDouble()] Branch 'simpleClass' and field 'simpleClass' differ at entry "<< entryId;
+        EXPECT_EQ(simpleClass->GetVecVecFloat(), fldSimpleClass->GetVecVecFloat())<<"[SimpleClass::GetVecVecFloat()] Branch 'simpleClass' and field 'simpleClass' differ at entry "<< entryId;
+     
 
         //Float_t x[3]
         EXPECT_EQ(sizeof(x) / sizeof(*x), fldFx->size())<<"[Array length] Branch 'x' and field 'x' differ at entry "<< entryId;
@@ -233,7 +252,7 @@ TEST(UnitTest, Comparison)
         {
             EXPECT_EQ(vec_bool->at(i), fldVec_bool->at(i))<< "Branch 'vec_float' and field 'vec_float' differ at entry "<<entryId<<" at index" << i;
         }
-
+/*
         //ROOT::RVec<double>* RVec_double
         EXPECT_EQ(RVec_double->size(), fldRVec_double->size())<<"[RVec length] Branch 'RVec_double' and field 'RVec_double' differ at entry "<< entryId;
         for(decltype(fldRVec_double->size()) i = 0; i < fldRVec_double->size(); i++)
@@ -247,7 +266,7 @@ TEST(UnitTest, Comparison)
         {
             EXPECT_STREQ(RVec_string->at(i).c_str(), fldRVec_string->at(i).c_str())<< "Branch 'RVec_string' and field 'RVec_string' differ at entry "<<entryId<<" at index" << i;
         }
-
+*/
         //std::pair<int, float>* pair_
         EXPECT_EQ(*pair_, *fldPair)<<"Branch 'pair_' and field 'pair_' differ at entry "<< entryId;
 
@@ -257,12 +276,7 @@ TEST(UnitTest, Comparison)
         //std::string* string_
         EXPECT_STREQ((*string_).c_str(), fldString->c_str())<<"Branch 'string_' and field 'string_' differ at entry "<< entryId;
 
-        //SimpleClass* simpleClass
-        EXPECT_EQ(simpleClass->GetInt(), fldSimpleClass->GetInt())<<"[SimpleClass::GetInt()] Branch 'simpleClass' and field 'simpleClass' differ at entry "<< entryId;
-        EXPECT_FLOAT_EQ(simpleClass->GetFloat(), fldSimpleClass->GetFloat())<<"[SimpleClass::GetFloat()] Branch 'simpleClass' and field 'simpleClass' differ at entry "<< entryId;
-        EXPECT_EQ(simpleClass->GetVecDouble(), fldSimpleClass->GetVecDouble())<<"[SimpleClass::GetVecDouble()] Branch 'simpleClass' and field 'simpleClass' differ at entry "<< entryId;
-        EXPECT_EQ(simpleClass->GetVecVecFloat(), fldSimpleClass->GetVecVecFloat())<<"[SimpleClass::GetVecVecFloat()] Branch 'simpleClass' and field 'simpleClass' differ at entry "<< entryId;
-        
+           
     }
     delete simpleClass;
     std::cout << "Comparison completed!" << std::endl;
