@@ -97,17 +97,6 @@ struct ContainerField
 //     }
 // };
 
-void DefaultPrintProgressOverwrite(int current, int total)
-{
-    int interval = total / 100;
-    if (current % interval == 0)
-    {
-        fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
-                current, total,
-                (static_cast<float>(current) / total) * 100);
-    }
-}
-
 class TTreeToRNTuple
 {
 public:
