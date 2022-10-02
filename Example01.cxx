@@ -14,18 +14,24 @@ int main(int argc, char **argv)
     std::string compressionAlgo = "none";
     int compressionLevel = 0;
     std::vector<std::string> dictionary = {"../data/SimpleClass_cxx.so"};
-    std::vector<std::string> subBranches = {"simpleClass","x"};
+    std::vector<std::string> subBranches = {"simpleClass", "x"};
 
-    //convert
+    // convert
     std::unique_ptr<TTreeToRNTuple> conversion = std::make_unique<TTreeToRNTuple>(inputFile, outputFile, treeName);
     conversion->SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     conversion->SetDictionary(dictionary);
     conversion->SelectBranches(subBranches);
-    // conversion->SelectAllBranches();
-    conversion->SetDefaultProgressCallbackFunc();
+    // conversion->SetDefaultProgressCallbackFunc(); // callback provided by this library
+    conversion->SetUserProgressCallbackFunc([](int current, int total)
+                                            {if (current % 10 == 0)
+                                                {
+                                                    fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
+                                                            current, total,
+                                                            (static_cast<float>(current) / total) * 100);
+                                                } }); //user-defined lambda function
     conversion->Convert();
 
-    //view
+    // view
     std::unique_ptr<TFile> ntupleFile(TFile::Open(outputFile.c_str()));
     std::string ntupleName = ntupleFile->GetListOfKeys()->First()->GetName();
     auto ntuple = RNTupleReader::Open(ntupleName, outputFile);
@@ -33,8 +39,6 @@ int main(int argc, char **argv)
     int nEntry = 200;
     printf("The %dth entry is shown below:\n", nEntry);
     ntuple->Show(nEntry, ENTupleShowFormat::kCompleteJSON);
-    
+
     return 0;
 }
-
-   
