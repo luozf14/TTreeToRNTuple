@@ -82,7 +82,6 @@ public:
     std::string GetOutputFile() { return fOutputFile; };
     std::string GetTreeName() { return fTreeName; };
     std::vector<std::string> GetDictionary() { return fDictionary; };
-    callback_t GetUserProgressCallbackFunc() { return fCallbackFunc; };
 
     void Convert();
 

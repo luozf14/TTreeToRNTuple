@@ -43,6 +43,7 @@ TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::strin
     fTreeName = treeName;
     SetCompressionAlgo("none");
     SetUserProgressCallbackFunc(nullptr);
+    fSelectedBranches={};
 }
 
 TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel)
@@ -52,6 +53,7 @@ TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::strin
     fTreeName = treeName;
     SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     SetUserProgressCallbackFunc(nullptr);
+    fSelectedBranches={};
 }
 
 TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel, std::vector<std::string> dictionary)
@@ -62,6 +64,7 @@ TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::strin
     SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     SetDictionary(dictionary);
     SetUserProgressCallbackFunc(nullptr);
+    fSelectedBranches={};
 }
 
 std::string TTreeToRNTuple::SanitizeBranchName(std::string name)
@@ -213,7 +216,7 @@ void TTreeToRNTuple::Convert()
     }
 
     Long_t nEntries = tree->GetEntries();
-    printf("Number of entries in tree \"%s\": %ld.\n", fTreeName.c_str(), nEntries);
+    printf("Number of entries in tree \'%s\': %ld.\n", fTreeName.c_str(), nEntries);
 
     //
     // Get the scheme of the tree
@@ -228,7 +231,7 @@ void TTreeToRNTuple::Convert()
         }
 
         TLeaf *leaf = static_cast<TLeaf *>(branch->GetListOfLeaves()->First());
-        std::cout << "In root file detect leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: " << leaf->GetTitle()
+        std::cout << "In input file \'" << file->GetName() << "\' detect leaf name: " << leaf->GetName() << "; leaf type: " << leaf->GetTypeName() << "; leaf title: " << leaf->GetTitle()
                   << "; leaf length: " << leaf->GetLenStatic() << "; leaf type size: " << leaf->GetLenType() << std::endl;
 
         if (typeid(*branch) == typeid(TBranchSTL) || typeid(*branch) == typeid(TBranchElement))
