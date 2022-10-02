@@ -42,6 +42,7 @@ TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::strin
     fOutputFile = output;
     fTreeName = treeName;
     SetCompressionAlgo("none");
+    SetUserProgressCallbackFunc(nullptr);
 }
 
 TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel)
@@ -50,6 +51,7 @@ TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::strin
     fOutputFile = output;
     fTreeName = treeName;
     SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
+    SetUserProgressCallbackFunc(nullptr);
 }
 
 TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel, std::vector<std::string> dictionary)
@@ -59,6 +61,7 @@ TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::strin
     fTreeName = treeName;
     SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     SetDictionary(dictionary);
+    SetUserProgressCallbackFunc(nullptr);
 }
 
 std::string TTreeToRNTuple::SanitizeBranchName(std::string name)
@@ -142,6 +145,7 @@ void TTreeToRNTuple::SetDictionary(std::vector<std::string> dictionary)
             throw RException(R__FAIL("Error: Load dictionary \'" + d + "\' unsuccessfully!\n"));
         }
     }
+    fDictionary = dictionary;
 }
 
 void TTreeToRNTuple::SelectBranches(std::vector<std::string> subBranch)
@@ -294,25 +298,19 @@ void TTreeToRNTuple::Convert()
     auto entry = model->CreateBareEntry();
     for (auto &f1 : fFlatFields)
     {
-        // f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
-        // entry->CaptureValueUnsafe(f1.ntupleName, f1.ntupleBuffer.get());
         if (f1.isVariableSizedArray)
         {
             f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
             entry->CaptureValueUnsafe(f1.ntupleName, f1.ntupleBuffer.get());
-            // std::cout << "f1.isVariableSizedArray" << std::endl;
         }
         else if (!f1.isVariableSizedArray && f1.arrayLength >= 1)
         {
-            // f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
             entry->CaptureValueUnsafe(f1.ntupleName, f1.treeBuffer.get());
-            // std::cout << "!f1.isVariableSizedArray && f1.arrayLength >= 1" << std::endl;
         }
     }
     for (auto &c1 : fContainerFields)
     {
         entry->CaptureValueUnsafe(c1.ntupleName, *c1.treeBuffer.get());
-        // std::cout << "container" << std::endl;
     }
 
     // Create the RNTuple file
@@ -331,10 +329,6 @@ void TTreeToRNTuple::Convert()
                 ((std::vector<unsigned char> *)f1.ntupleBuffer.get())->resize(arrayLengthCurrentEntry * f1.leafTypeSize);
                 std::memcpy(((std::vector<unsigned char> *)f1.ntupleBuffer.get())->data(), f1.treeBuffer.get(), arrayLengthCurrentEntry * f1.leafTypeSize);
             }
-            // if (!f1.isVariableSizedArray && f1.arrayLength >= 1)
-            // {
-            //     std::memcpy(f1.ntupleBuffer.get(), f1.treeBuffer.get(), f1.arrayLength * f1.leafTypeSize);
-            // }
         }
 
         ntuple->Fill(*entry);
@@ -343,5 +337,4 @@ void TTreeToRNTuple::Convert()
             fCallbackFunc(i+1, nEntries);
         }
     }
-    // fprintf(stderr, "\n\033[00;32mConversion completed!\n\033[00m");
 }
