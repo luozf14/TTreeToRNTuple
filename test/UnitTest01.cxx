@@ -23,7 +23,7 @@ using ENTupleInfo = ROOT::Experimental::ENTupleInfo;
 
 TEST(UnitTest, CreateTTree)
 {
-    auto rootFile = std::make_shared<TFile>("TestFile.root", "RECREATE");
+    auto rootFile = std::make_shared<TFile>("/mnt/d/TestFile.root", "RECREATE");
     auto tree = std::make_shared<TTree>("MixedTree", "TTree containing branches of all types supported by RNTuple");
 
     gSystem->Load("../../test/SimpleClass_cxx");
@@ -63,7 +63,7 @@ TEST(UnitTest, CreateTTree)
     Int_t nX,nY;
     std::vector<Double_t> tempVecDouble;
     std::vector<std::vector<float>> tempVecVecfloat;
-    for(int i=0; i<1e7; i++)
+    for(int i=0; i<1e8; i++)
     {
         simpleClass->SetInt(i);
         simpleClass->SetFloat(ranGen.Rndm()*10);
@@ -114,13 +114,12 @@ TEST(UnitTest, CreateTTree)
     rootFile->Close();
     delete simpleClass;
     std::cout << "Created root file containing ttree: MixedTree." << std::endl;
-
 }
 
 TEST(UnitTest, Conversion)
 {
-    std::string inputFile = "TestFile.root";
-    std::string outputFile = "TestFile.ntuple";
+    std::string inputFile = "/mnt/d/TestFile.root";
+    std::string outputFile = "/mnt/d/TestFile.ntuple";
     std::string treeName = "MixedTree";
     std::string compressionAlgo = "lzma";
     int compressionLevel = 9;
@@ -130,9 +129,6 @@ TEST(UnitTest, Conversion)
     conversion->SetDictionary(dictionary);
     conversion->SelectAllBranches();
     conversion->SetDefaultProgressCallbackFunc();
-    // conversion->SetUserProgressCallbackFunc([](int current, int total){fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
-                // current, total,
-                // (static_cast<float>(current) / total) * 100);});
     EXPECT_NO_THROW(conversion->Convert(););
 }
 
@@ -154,7 +150,7 @@ TEST(UnitTest, Comparison)
     std::tuple<std::string, int, float>* tuple_ = nullptr;
     std::string* string_ = nullptr;
 
-    auto rootFile = std::make_shared<TFile>("TestFile.root", "READ");
+    auto rootFile = std::make_shared<TFile>("/mnt/d/TestFile.root", "READ");
     auto tree = rootFile->Get<TTree>("MixedTree");
 
     tree->SetBranchAddress("simpleClass",&simpleClass);
@@ -193,7 +189,7 @@ TEST(UnitTest, Comparison)
     auto fldTuple = model->MakeField<std::tuple<std::string, int, float>>("tuple_");
     auto fldString = model->MakeField<std::string>("string_");
 
-    auto ntuple = RNTupleReader::Open(std::move(model), "MixedTree", "TestFile.ntuple");
+    auto ntuple = RNTupleReader::Open(std::move(model), "MixedTree", "/mnt/d/TestFile.ntuple");
     
     // compare
     for (auto entryId : *ntuple)
