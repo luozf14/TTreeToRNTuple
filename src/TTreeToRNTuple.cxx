@@ -244,7 +244,10 @@ void TTreeToRNTuple::Convert()
         {
             auto field = RFieldBase::Create(f1.ntupleName, "std::vector<" + f1.typeName + ", " + std::to_string(f1.arrayLength) + ">").Unwrap();
             R__ASSERT(field);
-            
+            model->AddField(std::move(field));
+            std::cout << "Add field: " << model->GetField(f1.ntupleName)->GetName() << "; field type name: " << model->GetField(f1.ntupleName)->GetType() << std::endl;
+            f1.treeBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
+            tree->SetBranchAddress(f1.ntupleName.c_str(), (void *)f1.treeBuffer.get());
         }
         else if (!f1.isVariableSizedArray && f1.arrayLength > 1) // normal fixed-size array
         {
@@ -315,13 +318,13 @@ void TTreeToRNTuple::Convert()
         }
 
         ntuple->Fill(*entry);
-        if (fCallbackFunc && i % 1000 == 0)
+        if (fCallbackFunc && i%1000==0 )
         {
-            fCallbackFunc(i + 1, nEntries);
+            fCallbackFunc(i, nEntries);
         }
     }
     if (fCallbackFunc)
     {
-        fCallbackFunc(i + 1, nEntries);
+        fCallbackFunc(i, nEntries);
     }
 }

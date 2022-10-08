@@ -83,7 +83,7 @@ Processing entry 2000 of 2000 [100.0% completed]
 - Compression algorithm (``zlib``, ``lz4``, ``lzma``, ``zstd``, or ``none``) and level (from ``0`` to ``9``) can be set by ``SetCompressionAlgoLevel(std::string compressionAlgo, int compressionLevel)``. One can also use ``SetCompressionAlgo(std::string compressionAlgo)`` without specifying compression level. By default, the library does not use any compression.
 - If the input TTree contains branches of user-defined classes, one has to specify the dictionaries of those classes by ``SetDictionary(std::vector<std::string> dictionary)``.
 - By default all branches in the input TTree will be converted. If only some of them need to be converted, one needs to select these branches by ``SelectBranches(std::vector<std::string> subBranches)``.
-- The library provides an interface to set the callback function of printing conversion progress. By default no progress will be printed. User can setup self-defined lambda function by ``SetUserProgressCallbackFunc([](int current, int total){/***/})``, or use the callback function provided by the library ``SetDefaultProgressCallbackFunc()``. For more details, see ``Example01.cxx``.
+- The library provides an interface to set the callback function of printing conversion progress. By default no progress will be printed. User can setup self-defined lambda function by ``SetUserProgressCallbackFunc([](int current, int total){/*your callback function*/})``. For more details, see ``Example01.cxx``.
 - Upon setting up the required and optional parameters, the conversion is proceeded by calling ``Convert()``.
 
 ## Test
