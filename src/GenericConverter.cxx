@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 using RException = ROOT::Experimental::RException;
 
@@ -61,7 +62,8 @@ int main(int argc, char **argv)
 
     if (inputFile.empty() || outputFile.empty() || treeName.empty())
     {
-        throw RException(R__FAIL("Error: Minimal required parameters: -i <input.root> -o <output.ntuple> -t(ree) <tree name>\n)"));
+        std::cerr<<"Error: Minimal required parameters: -i <input.root> -o <output.ntuple> -t(ree) <tree name>"<<std::endl;
+        exit(1);
     }
 
     std::unique_ptr<TTreeToRNTuple> conversion = std::make_unique<TTreeToRNTuple>(inputFile, outputFile, treeName);
@@ -69,7 +71,21 @@ int main(int argc, char **argv)
     conversion->SetDictionary(dictionaries);
     conversion->SelectBranches(subBranches);
     if (flagDefaultProgressCallbackFunc)
-        conversion->SetDefaultProgressCallbackFunc();
+        conversion->SetUserProgressCallbackFunc([](int current, int total)
+                                                {
+        int interval = total / 100 * 5;
+        if (current % interval == 0)
+        {
+            fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
+                    current, total,
+                    (static_cast<float>(current) / total) * 100);
+        }
+        if(current == total)
+        {
+            fprintf(stderr, "\rProcessing entry %d of %d [\033[00;32m%2.1f%% completed\033[00m]\n",
+                    current, total,
+                    (static_cast<float>(current) / total) * 100);
+        } });
     conversion->Convert();
 
     return 0;
