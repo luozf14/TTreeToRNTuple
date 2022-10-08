@@ -75,7 +75,6 @@ public:
     void SetDictionary(std::vector<std::string> dictionary);
     void SelectBranches(std::vector<std::string> subBranch);
     void SelectAllBranches();
-    void SetDefaultProgressCallbackFunc();
     void SetUserProgressCallbackFunc(callback_t);
 
     std::string GetInputFile() { return fInputFile; };

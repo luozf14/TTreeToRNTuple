@@ -15,6 +15,7 @@
 #include <TClass.h>
 #include <TSystem.h>
 #include <TInterpreter.h>
+#include <TError.h>
 
 #include <cstring>
 #include <iostream>
@@ -43,7 +44,7 @@ TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::strin
     fTreeName = treeName;
     SetCompressionAlgo("none");
     SetUserProgressCallbackFunc(nullptr);
-    fSelectedBranches={};
+    fSelectedBranches = {};
 }
 
 TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel)
@@ -53,7 +54,7 @@ TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::strin
     fTreeName = treeName;
     SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     SetUserProgressCallbackFunc(nullptr);
-    fSelectedBranches={};
+    fSelectedBranches = {};
 }
 
 TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::string treeName, std::string compressionAlgo, int compressionLevel, std::vector<std::string> dictionary)
@@ -64,7 +65,7 @@ TTreeToRNTuple::TTreeToRNTuple(std::string input, std::string output, std::strin
     SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     SetDictionary(dictionary);
     SetUserProgressCallbackFunc(nullptr);
-    fSelectedBranches={};
+    fSelectedBranches = {};
 }
 
 std::string TTreeToRNTuple::SanitizeBranchName(std::string name)
@@ -179,26 +180,6 @@ void TTreeToRNTuple::SetOutputFile(std::string output)
     fOutputFile = output;
 }
 
-void TTreeToRNTuple::SetDefaultProgressCallbackFunc()
-{
-    fCallbackFunc = [](int current, int total)
-    {
-        int interval = total / 100 * 5;
-        if (current % interval == 0)
-        {
-            fprintf(stderr, "\rProcessing entry %d of %d [\033[00;33m%2.1f%% completed\033[00m]",
-                    current, total,
-                    (static_cast<float>(current) / total) * 100);
-        }
-        if(current == total)
-        {
-            fprintf(stderr, "\rProcessing entry %d of %d [\033[00;32m%2.1f%% completed\033[00m]\n",
-                    current, total,
-                    (static_cast<float>(current) / total) * 100);
-        }
-    };
-}
-
 void TTreeToRNTuple::SetUserProgressCallbackFunc(callback_t notify)
 {
     fCallbackFunc = notify;
@@ -207,7 +188,8 @@ void TTreeToRNTuple::SetUserProgressCallbackFunc(callback_t notify)
 void TTreeToRNTuple::Convert()
 {
     std::unique_ptr<TFile> file(TFile::Open(fInputFile.c_str()));
-    assert(file && !file->IsZombie());
+
+    R__ASSERT(file && !file->IsZombie());
 
     auto tree = file->Get<TTree>(fTreeName.c_str());
     if (!tree)
@@ -223,8 +205,8 @@ void TTreeToRNTuple::Convert()
     //
     for (auto branch : TRangeDynCast<TBranch>(*tree->GetListOfBranches()))
     {
-        assert(branch);
-        assert(branch->GetNleaves() == 1);
+        R__ASSERT(branch);
+        R__ASSERT(branch->GetNleaves() == 1);
         if (!fSelectedBranches.empty() && std::find(fSelectedBranches.begin(), fSelectedBranches.end(), SanitizeBranchName(branch->GetName())) == fSelectedBranches.end())
         {
             continue;
@@ -258,28 +240,25 @@ void TTreeToRNTuple::Convert()
     auto model = RNTupleModel::CreateBare();
     for (auto &f1 : fFlatFields)
     {
-        if (f1.isVariableSizedArray)
+        if (f1.isVariableSizedArray) // variable-size array
         {
             auto field = RFieldBase::Create(f1.ntupleName, "std::vector<" + f1.typeName + ", " + std::to_string(f1.arrayLength) + ">").Unwrap();
-            assert(field);
-            model->AddField(std::move(field));
-            std::cout << "Add field: " << model->GetField(f1.ntupleName)->GetName() << "; field type name: " << model->GetField(f1.ntupleName)->GetType() << std::endl;
-            f1.treeBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
-            tree->SetBranchAddress(f1.ntupleName.c_str(), (void *)f1.treeBuffer.get());
+            R__ASSERT(field);
+            
         }
-        else if (!f1.isVariableSizedArray && f1.arrayLength > 1)
+        else if (!f1.isVariableSizedArray && f1.arrayLength > 1) // normal fixed-size array
         {
             auto field = RFieldBase::Create(f1.ntupleName, "std::array<" + f1.typeName + ", " + std::to_string(f1.arrayLength) + ">").Unwrap();
-            assert(field);
+            R__ASSERT(field);
             model->AddField(std::move(field));
             std::cout << "Add field: " << model->GetField(f1.ntupleName)->GetName() << "; field type name: " << model->GetField(f1.ntupleName)->GetType() << std::endl;
             f1.treeBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
             tree->SetBranchAddress(f1.ntupleName.c_str(), (void *)f1.treeBuffer.get());
         }
-        else if (!f1.isVariableSizedArray && f1.arrayLength == 1)
+        else if (!f1.isVariableSizedArray && f1.arrayLength == 1) // normal single variable
         {
             auto field = RFieldBase::Create(f1.ntupleName, f1.typeName).Unwrap();
-            assert(field);
+            R__ASSERT(field);
             model->AddField(std::move(field));
             std::cout << "Add field: " << model->GetField(f1.ntupleName)->GetName() << "; field type name: " << model->GetField(f1.ntupleName)->GetType() << std::endl;
             f1.treeBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
@@ -289,7 +268,7 @@ void TTreeToRNTuple::Convert()
     for (auto &c1 : fContainerFields)
     {
         auto field = RFieldBase::Create(c1.ntupleName, c1.typeName).Unwrap();
-        assert(field);
+        R__ASSERT(field);
         model->AddField(std::move(field));
         std::cout << "Add field: " << model->GetField(c1.ntupleName)->GetName() << "; field type name: " << model->GetField(c1.ntupleName)->GetType() << std::endl;
         auto kClass = TClass::GetClass(c1.typeName.c_str());
@@ -306,7 +285,7 @@ void TTreeToRNTuple::Convert()
             f1.ntupleBuffer = std::make_unique<unsigned char[]>(f1.arrayLength * f1.leafTypeSize);
             entry->CaptureValueUnsafe(f1.ntupleName, f1.ntupleBuffer.get());
         }
-        else if (!f1.isVariableSizedArray && f1.arrayLength >= 1)
+        else
         {
             entry->CaptureValueUnsafe(f1.ntupleName, f1.treeBuffer.get());
         }
@@ -320,7 +299,8 @@ void TTreeToRNTuple::Convert()
     auto ntuple = RNTupleWriter::Recreate(std::move(model), fTreeName, fOutputFile, fWriteOptions);
 
     // Loop the tree
-    for (decltype(nEntries) i = 0; i < nEntries; i++)
+    decltype(nEntries) i = 0;
+    for (i = 0; i < nEntries; i++)
     {
         tree->GetEntry(i);
 
@@ -335,9 +315,13 @@ void TTreeToRNTuple::Convert()
         }
 
         ntuple->Fill(*entry);
-        if (fCallbackFunc)
+        if (fCallbackFunc && i % 1000 == 0)
         {
-            fCallbackFunc(i+1, nEntries);
+            fCallbackFunc(i + 1, nEntries);
         }
+    }
+    if (fCallbackFunc)
+    {
+        fCallbackFunc(i + 1, nEntries);
     }
 }
