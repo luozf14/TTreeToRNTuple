@@ -12,6 +12,8 @@ void GenTTreeMixed()
     auto file = std::make_shared<TFile>("TTreeMixed.root", "RECREATE");
     auto tree = std::make_shared<TTree>("MixedTree", "TTree with user defined class");
 
+    // gSystem->Load("SimpleClass_cxx");
+
     SimpleClass simpleClass;
 
     Float_t x[3];
@@ -19,7 +21,6 @@ void GenTTreeMixed()
     Int_t nZ;
     Double_t z[10];
     std::array<float, 10> array_float;
-
     std::vector<Float_t> vec_float;
     std::vector<bool> vec_bool;
     ROOT::RVec<double> RVec_double;
@@ -34,6 +35,7 @@ void GenTTreeMixed()
     tree->Branch("y", y, "y[5]/D");
     tree->Branch("nZ", &nZ, "nZ/I");
     tree->Branch("z", z, "z[nZ]/D");
+    tree->Branch("array_float",&array_float);
     tree->Branch("vec_float","std::vector<Float_t>",&vec_float);
 
     tree->Branch("vec_bool",&vec_bool);
@@ -47,7 +49,7 @@ void GenTTreeMixed()
     Int_t nX,nY;
     std::vector<Double_t> tempVecDouble;
     std::vector<std::vector<float>> tempVecVecfloat;
-    for(int i=0; i<20; i++)
+    for(int i=0; i<2000; i++)
     {
         simpleClass.SetInt(i);
         simpleClass.SetFloat(ranGen.Rndm()*10);
