@@ -29,7 +29,7 @@ void GenTTreeSTLContainer()
     
     TRandom3 ranGen;
     Int_t nX;
-    for(int i=0; i<20; i++)
+    for(int i=0; i<2000; i++)
     {
         vec_float.clear();
         vec_bool.clear();
