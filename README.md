@@ -73,7 +73,7 @@ Add field: RVec_string; field type name: ROOT::VecOps::RVec<std::string>
 Add field: pair_; field type name: std::pair<std::int32_t,float>
 Add field: tuple_; field type name: std::tuple<std::string,std::int32_t,float>
 Add field: string_; field type name: std::string
-Warning in <[ROOT.NTuple] Warning /home/luozf/Documents/root/tree/ntuple/v7/src/RPageStorageFile.cxx:51 in ROOT::Experimental::Detail::RPageSinkFile::RPageSinkFile(std::string_view, const ROOT::Experimental::RNTupleWriteOptions&)>: The RNTuple file format will change. Do not store real data with this version of RNTuple!
+Warning in <[ROOT.NTuple] Warning <path-to-root>/tree/ntuple/v7/src/RPageStorageFile.cxx:51 in ROOT::Experimental::Detail::RPageSinkFile::RPageSinkFile(std::string_view, const ROOT::Experimental::RNTupleWriteOptions&)>: The RNTuple file format will change. Do not store real data with this version of RNTuple!
 Processing entry 2000 of 2000 [100.0% completed]
 ```
 
@@ -92,7 +92,15 @@ The unit test is under directory ``test/``. For TTree containing branches of all
 ### Test data sets
 This library has been tested with the data that can be downloaded from https://root.cern/files/RNTuple/treeref/. 
 
-
+## Known issues and Future works
+- \[Issue\] Multidimensional array such as `int myArray[10][20]` is not supported by RNTuple at current stage. However, since all C++ arrays are stored as 1D array in memory, multidimensional array can still be converted into `std::array<T, N/*total number of elements*/>` (if it is fixed-size, e.g., `int myArray[10][20]`) or `std::vector<T>` (if it is variable-size, e.g., `int myArray[10][n]`). We will wait until RNTuple natively supports multidimensional array to implement proper conversion. 
+- \[Issue\] This tool does not work stably with `ROOT::RVec<T>`. When the number of entries of the TTree containing `ROOT::RVec<T>` exceeds 1e5, the conversion will probably crash. This may due to the limit of life time of `ROOT::RVec<T>` object. We will fix this issue in the future.
+- \[Future\] Instead of printing messages before the conversion -such as the one below-, provide a means to notify user code of certain events (much like the callback currently used for notifying progress). In principle, this should be achieved via the well-known observer pattern.
+```
+In input file '/tmp/TestFile.root' detect leaf name: simpleClass; leaf type: SimpleClass; leaf title: simpleClass; leaf length: 1; leaf type size: 0
+Add field: x; field type name: std::array<float,3>
+```
+- \[Future\] The interface of the library is rather simple now. Improvements will be made in the future. 
 
 
 
