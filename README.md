@@ -5,7 +5,7 @@ A tool that takes as input a root file containing TTree and converts TTree to RN
 - Supports TTree with branches of most-common types.
   - All basic C++ data types, e.g., ``int``, ``float``. 
   - 1D C++ array of fixed or variable length, e.g., ``int a[10]``, ``float b[n]``.
-  - All STL containers that are supported by RNTuple: ``std::string``, ``std::array<T, N>``, ``std::vector<T> and ROOT::RVec<T>``, ``std::pair<T1, T2>``, ``std::tuple<T1, …, Tn>``.
+  - All STL containers that are supported by RNTuple: ``std::string``, ``std::array<T, N>``, ``std::vector<T>``, ``std::pair<T1, T2>``, ``std::tuple<T1, …, Tn>``.
   - Any user-defined class with the corresponding dictionary.
   - Nested types. Currently one needs to generate the dictionary manually for nested types in order to convert them.
 - This tool can be used as a command-line tool or a C++ library. 
