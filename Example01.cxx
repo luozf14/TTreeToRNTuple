@@ -21,7 +21,6 @@ int main(int argc, char **argv)
     conversion->SetCompressionAlgoLevel(compressionAlgo, compressionLevel);
     conversion->SetDictionary(dictionary);
     conversion->SelectBranches(subBranches);
-    // conversion->SetDefaultProgressCallbackFunc(); // callback provided by this library
     conversion->SetUserProgressCallbackFunc([](int current, int total)
                                             {if (current % 10 == 0)
                                                 {
